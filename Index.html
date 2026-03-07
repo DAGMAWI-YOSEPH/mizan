@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>Mizān — Money Tracker</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #1a1a1a;
+  --bg2: #232323;
+  --bg3: #2e2e2e;
+  --border: #3a3a3a;
+  --text: #f0ede8;
+  --text2: #a09a94;
+  --text3: #6a6560;
+  --accent: #c8b89a;
+  --income: #8fb89a;
+  --expense: #c8837a;
+  --shadow: rgba(0,0,0,0.4);
+  --overlay: rgba(0,0,0,0.7);
+  --icon-filter: invert(1);
+}
+body.light {
+  --bg: #f5f2ee;
+  --bg2: #ede9e3;
+  --bg3: #e4dfd8;
+  --border: #d4cec8;
+  --text: #1a1a1a;
+  --text2: #6a6560;
+  --text3: #a09a94;
+  --accent: #7a6a58;
+  --income: #3a7a4a;
+  --expense: #8a3a33;
+  --shadow: rgba(0,0,0,0.12);
+  --overlay: rgba(0,0,0,0.5);
+  --icon-filter: invert(0);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background 0.3s,color 0.3s;}
+input,select,button{font-family:'DM Sans',sans-serif;}
+
+/* ── SCREENS ── */
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* ── AUTH ── */
+.auth-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;padding:32px 28px;}
+.auth-logo{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:-0.02em;}
+.auth-sub{font-size:13px;color:var(--text2);margin-bottom:40px;font-weight:300;}
+.auth-tabs{display:flex;gap:0;margin-bottom:28px;border-bottom:1px solid var(--border);}
+.auth-tab{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:500;cursor:pointer;color:var(--text3);border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.2s;}
+.auth-tab.active{color:var(--text);border-bottom-color:var(--accent);}
+.field-wrap{margin-bottom:14px;}
+.field-label{font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;font-weight:500;}
+.field-input{width:100%;padding:13px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:14px;color:var(--text);outline:none;transition:border-color 0.2s;}
+.field-input:focus{border-color:var(--accent);}
+.field-input::placeholder{color:var(--text3);}
+.photo-upload{width:72px;height:72px;border-radius:50%;background:var(--bg2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin:0 auto 20px;transition:border-color 0.2s;}
+.photo-upload:hover{border-color:var(--accent);}
+.photo-upload img{width:100%;height:100%;object-fit:cover;}
+.photo-upload-icon{font-size:24px;filter:var(--icon-filter);opacity:0.4;}
+.auth-btn{width:100%;padding:15px;background:var(--accent);border:none;border-radius:12px;font-size:14px;font-weight:600;color:var(--bg);cursor:pointer;margin-top:8px;letter-spacing:0.03em;transition:opacity 0.2s;}
+.auth-btn:active{opacity:0.8;}
+.auth-link{text-align:center;font-size:12px;color:var(--text3);margin-top:16px;}
+.auth-link span{color:var(--accent);cursor:pointer;font-weight:500;}
+
+/* ── ONBOARDING ── */
+.onboard-wrap{flex:1;display:flex;flex-direction:column;padding:28px 24px;}
+.onboard-header{margin-bottom:24px;}
+.onboard-title{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;margin-bottom:6px;}
+.onboard-sub{font-size:13px;color:var(--text2);line-height:1.5;}
+.income-source-list{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+.income-source-item{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+.income-source-name{flex:1;font-size:13px;font-weight:500;}
+.income-source-type{font-size:11px;color:var(--text3);}
+.income-source-del{background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:2px 6px;}
+.add-source-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:transparent;border:1.5px dashed var(--border);border-radius:12px;font-size:13px;color:var(--text2);cursor:pointer;transition:all 0.2s;}
+.add-source-btn:hover{border-color:var(--accent);color:var(--accent);}
+.onboard-skip{text-align:center;font-size:12px;color:var(--text3);margin-top:12px;cursor:pointer;}
+.onboard-skip span{color:var(--accent);}
+.onboard-btn{width:100%;padding:15px;background:var(--accent);border:none;border-radius:12px;font-size:14px;font-weight:600;color:var(--bg);cursor:pointer;margin-top:auto;padding-top:15px;}
+
+/* ── APP HEADER ── */
+.app-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;}
+.header-left{display:flex;flex-direction:column;}
+.header-greeting{font-size:11px;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;font-weight:500;}
+.header-name{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-top:1px;}
+.header-right{display:flex;align-items:center;gap:12px;}
+.theme-btn{width:34px;height:34px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:all 0.2s;}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--bg3);border:2px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--text2);cursor:pointer;}
+.avatar img{width:100%;height:100%;object-fit:cover;}
+
+/* ── BALANCE ── */
+.balance-section{margin:0 20px 20px;background:var(--bg2);border-radius:18px;padding:22px;border:1px solid var(--border);}
+.balance-label{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+.balance-value{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;letter-spacing:-0.02em;margin-bottom:18px;color:var(--text);}
+.balance-value.pos{color:var(--income);}
+.balance-value.neg{color:var(--expense);}
+.balance-row{display:flex;gap:12px;}
+.bal-stat{flex:1;background:var(--bg3);border-radius:10px;padding:11px 12px;}
+.bal-stat-lbl{font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:3px;}
+.bal-stat-val{font-size:15px;font-weight:600;color:var(--text);}
+.bal-stat-val.inc{color:var(--income);}
+.bal-stat-val.exp{color:var(--expense);}
+
+/* ── TABS ── */
+.tabs-bar{display:flex;margin:0 20px 16px;background:var(--bg2);border-radius:12px;padding:4px;gap:3px;border:1px solid var(--border);}
+.tab-btn{flex:1;padding:9px 4px;text-align:center;font-size:11px;font-weight:500;border-radius:9px;cursor:pointer;color:var(--text3);border:none;background:transparent;transition:all 0.2s;letter-spacing:0.04em;}
+.tab-btn.active{background:var(--bg);color:var(--text);box-shadow:0 1px 6px var(--shadow);}
+
+/* ── VIEWS ── */
+.view{display:none;padding:0 20px;}
+.view.active{display:block;}
+
+/* ── ADD FORM ── */
+.type-row{display:flex;gap:8px;margin-bottom:16px;}
+.type-pill{flex:1;padding:11px;border-radius:10px;border:1.5px solid var(--border);background:transparent;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);letter-spacing:0.05em;transition:all 0.2s;}
+.type-pill.income.on{border-color:var(--income);background:rgba(143,184,154,0.12);color:var(--income);}
+.type-pill.expense.on{border-color:var(--expense);background:rgba(200,131,122,0.12);color:var(--expense);}
+.amount-row{position:relative;margin-bottom:12px;}
+.amount-sym{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-family:'Playfair Display',serif;font-size:22px;color:var(--text3);}
+.amount-in{width:100%;padding:15px 14px 15px 34px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--text);outline:none;transition:border-color 0.2s;}
+.amount-in:focus{border-color:var(--accent);}
+.amount-in::placeholder{color:var(--text3);}
+.form-field{margin-bottom:10px;}
+.form-field select,.form-field input{width:100%;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text);outline:none;appearance:none;transition:border-color 0.2s;}
+.form-field select:focus,.form-field input:focus{border-color:var(--accent);}
+.form-field select option{background:var(--bg2);}
+.source-select-wrap{position:relative;}
+.source-select-wrap::after{content:'›';position:absolute;right:14px;top:50%;transform:translateY(-50%) rotate(90deg);color:var(--text3);pointer-events:none;font-size:16px;}
+.submit-btn{width:100%;padding:15px;background:var(--accent);border:none;border-radius:12px;font-size:13px;font-weight:600;color:var(--bg);cursor:pointer;margin-top:6px;letter-spacing:0.05em;transition:opacity 0.2s;}
+.submit-btn:active{opacity:0.8;}
+
+/* ── HISTORY ── */
+.hist-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.hist-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;}
+.hist-clear{font-size:11px;color:var(--expense);background:none;border:none;cursor:pointer;}
+.tx-list{display:flex;flex-direction:column;gap:8px;}
+.tx-card{display:flex;align-items:center;gap:12px;background:var(--bg2);border-radius:12px;padding:13px;border:1px solid var(--border);animation:fadeUp 0.2s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.tx-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.tx-icon.income{background:rgba(143,184,154,0.12);}
+.tx-icon.expense{background:rgba(200,131,122,0.12);}
+.tx-body{flex:1;min-width:0;}
+.tx-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tx-meta{font-size:10px;color:var(--text3);margin-top:2px;}
+.tx-right{text-align:right;flex-shrink:0;}
+.tx-amt{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;}
+.tx-amt.income{color:var(--income);}
+.tx-amt.expense{color:var(--expense);}
+.tx-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;margin-top:3px;display:block;margin-left:auto;}
+.empty-msg{text-align:center;padding:48px 20px;color:var(--text3);}
+.empty-msg .e-ico{font-size:36px;margin-bottom:10px;filter:var(--icon-filter);opacity:0.3;}
+.empty-msg p{font-size:12px;line-height:1.6;}
+
+/* ── STATS ── */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.stat-tile{background:var(--bg2);border-radius:12px;padding:14px;border:1px solid var(--border);}
+.stat-tile-lbl{font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;}
+.stat-tile-val{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;}
+.stat-tile-val.inc{color:var(--income);}
+.stat-tile-val.exp{color:var(--expense);}
+.stat-tile-val.acc{color:var(--accent);}
+.cat-section-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;margin-bottom:10px;}
+.cat-bars{display:flex;flex-direction:column;gap:8px;}
+.cat-bar-item{background:var(--bg2);border-radius:10px;padding:11px 13px;border:1px solid var(--border);}
+.cat-bar-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.cat-bar-name{font-size:12px;font-weight:500;}
+.cat-bar-amt{font-size:12px;font-weight:600;color:var(--expense);}
+.cat-track{height:3px;background:var(--border);border-radius:3px;overflow:hidden;}
+.cat-fill{height:100%;background:var(--accent);border-radius:3px;transition:width 0.5s;}
+
+/* ── POPUP OVERLAY ── */
+.overlay{position:fixed;inset:0;background:var(--overlay);z-index:100;display:none;align-items:flex-end;justify-content:center;}
+.overlay.open{display:flex;}
+.popup{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-height:80vh;overflow-y:auto;padding:20px;border-top:1px solid var(--border);}
+.popup-handle{width:36px;height:3px;background:var(--border);border-radius:3px;margin:0 auto 18px;}
+.popup-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:16px;}
+.popup-close{position:absolute;right:20px;top:20px;background:var(--bg2);border:none;width:30px;height:30px;border-radius:50%;cursor:pointer;color:var(--text2);font-size:16px;}
+
+/* Source popup */
+.source-form{display:flex;flex-direction:column;gap:10px;}
+.source-form input,.source-form select{width:100%;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text);outline:none;appearance:none;}
+.source-form input:focus,.source-form select:focus{border-color:var(--accent);}
+.popup-save-btn{width:100%;padding:14px;background:var(--accent);border:none;border-radius:12px;font-size:13px;font-weight:600;color:var(--bg);cursor:pointer;margin-top:4px;}
+
+/* Subscription popup */
+.sub-search{width:100%;padding:11px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text);outline:none;margin-bottom:14px;}
+.sub-search::placeholder{color:var(--text3);}
+.sub-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.sub-tile{background:var(--bg2);border:1.5px solid var(--border);border-radius:12px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:all 0.15s;}
+.sub-tile.selected{border-color:var(--accent);background:rgba(200,184,154,0.1);}
+.sub-logo{width:36px;height:36px;border-radius:8px;object-fit:contain;background:#fff;padding:4px;}
+.sub-logo-text{width:36px;height:36px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);}
+.sub-name{font-size:10px;font-weight:500;text-align:center;color:var(--text2);}
+.sub-custom-wrap{margin-top:4px;}
+.sub-custom-label{font-size:11px;color:var(--text3);margin-bottom:6px;}
+.sub-custom-input{width:100%;padding:11px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text);outline:none;}
+.sub-add-btn{width:100%;padding:13px;background:var(--accent);border:none;border-radius:11px;font-size:13px;font-weight:600;color:var(--bg);cursor:pointer;margin-top:10px;}
+
+/* Income detail popup */
+.income-detail-form{display:flex;flex-direction:column;gap:10px;}
+.income-detail-form input{width:100%;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text);outline:none;}
+.detail-note{font-size:11px;color:var(--text3);text-align:center;}
+
+/* Profile popup */
+.profile-popup{padding:24px 20px;}
+.profile-popup-avatar{width:80px;height:80px;border-radius:50%;background:var(--bg2);border:2px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--text2);}
+.profile-popup-avatar img{width:100%;height:100%;object-fit:cover;}
+.profile-popup-name{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;text-align:center;margin-bottom:4px;}
+.profile-popup-email{font-size:12px;color:var(--text3);text-align:center;margin-bottom:4px;}
+.profile-popup-phone{font-size:12px;color:var(--text3);text-align:center;margin-bottom:20px;}
+.profile-logout{width:100%;padding:13px;background:rgba(200,131,122,0.12);border:1.5px solid var(--expense);border-radius:12px;font-size:13px;font-weight:600;color:var(--expense);cursor:pointer;}
+
+/* Toast */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 18px;font-size:12px;opacity:0;transition:all 0.25s;pointer-events:none;white-space:nowrap;z-index:200;color:var(--text);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.bottom-pad{height:28px;}
+</style>
+</head>
+<body>
+
+<!-- ════ LOGIN SCREEN ════ -->
+<div class="screen active" id="screen-auth">
+  <div style="display:flex;justify-content:flex-end;padding:16px 20px 0;">
+    <div class="theme-btn" id="authThemeBtn" onclick="toggleTheme()" style="width:34px;height:34px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;">◑</div>
+  </div>
+  <div class="auth-wrap" style="padding-top:12px;">
+    <div class="auth-logo">Mizān.</div>
+    <div class="auth-sub">Your personal money companion — Balance your money right</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="authTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="authTab('signup')">Create Account</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="login-form">
+      <div class="field-wrap">
+        <div class="field-label">Email</div>
+        <input class="field-input" id="login-email" type="email" placeholder="you@icloud.com"/>
+      </div>
+      <div class="field-wrap">
+        <div class="field-label">Password</div>
+        <input class="field-input" id="login-pass" type="password" placeholder="••••••••"/>
+      </div>
+      <button class="auth-btn" onclick="doLogin()">SIGN IN</button>
+    </div>
+
+    <!-- SIGNUP -->
+    <div id="signup-form" style="display:none;">
+      <div style="text-align:center;margin-bottom:16px;">
+        <div class="photo-upload" id="photoUpload" onclick="document.getElementById('photoInput').click()">
+          <span class="photo-upload-icon">＋</span>
+        </div>
+        <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhoto(event)"/>
+        <div style="font-size:10px;color:var(--text3);letter-spacing:0.08em;">TAP TO ADD PHOTO</div>
+      </div>
+      <div class="field-wrap">
+        <div class="field-label">Full Name</div>
+        <input class="field-input" id="su-name" type="text" placeholder="Your full name"/>
+      </div>
+      <div class="field-wrap">
+        <div class="field-label">Email</div>
+        <input class="field-input" id="su-email" type="email" placeholder="you@icloud.com"/>
+      </div>
+      <div class="field-wrap">
+        <div class="field-label">Phone Number</div>
+        <input class="field-input" id="su-phone" type="tel" placeholder="+251 9XX XXX XXX"/>
+      </div>
+      <div class="field-wrap">
+        <div class="field-label">Password</div>
+        <input class="field-input" id="su-pass" type="password" placeholder="Create a password"/>
+      </div>
+      <button class="auth-btn" onclick="doSignup()">CREATE ACCOUNT</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ ONBOARDING SCREEN ════ -->
+<div class="screen" id="screen-onboard">
+  <div class="onboard-wrap">
+    <div class="onboard-header">
+      <div class="onboard-title">Income Sources</div>
+      <div class="onboard-sub">Add your sources of income so you can track them accurately. You can always add more later.</div>
+    </div>
+    <div class="income-source-list" id="sourceList"></div>
+    <button class="add-source-btn" onclick="openAddSourcePopup()">＋ Add Income Source</button>
+    <div class="onboard-skip" onclick="finishOnboard()"><span>Skip for now →</span></div>
+    <div style="flex:1;min-height:24px;"></div>
+    <button class="onboard-btn" onclick="finishOnboard()">DONE — LET'S GO</button>
+  </div>
+</div>
+
+<!-- ════ APP SCREEN ════ -->
+<div class="screen" id="screen-app">
+  <div class="app-header">
+    <div class="header-left">
+      <div class="header-greeting">Good day</div>
+      <div class="header-name" id="appName">—</div>
+    </div>
+    <div class="header-right">
+      <div class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</div>
+      <div class="avatar" id="appAvatar" onclick="openProfile()"></div>
+    </div>
+  </div>
+
+  <div class="balance-section">
+    <div class="balance-label">Net Balance</div>
+    <div class="balance-value" id="balVal">$0.00</div>
+    <div class="balance-row">
+      <div class="bal-stat">
+        <div class="bal-stat-lbl">Income</div>
+        <div class="bal-stat-val inc" id="balInc">$0.00</div>
+      </div>
+      <div class="bal-stat">
+        <div class="bal-stat-lbl">Expenses</div>
+        <div class="bal-stat-val exp" id="balExp">$0.00</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs-bar">
+    <button class="tab-btn active" onclick="switchTab('add')">Add</button>
+    <button class="tab-btn" onclick="switchTab('history')">History</button>
+    <button class="tab-btn" onclick="switchTab('stats')">Stats</button>
+  </div>
+
+  <!-- ADD VIEW -->
+  <div class="view active" id="view-add">
+    <div class="type-row">
+      <button class="type-pill income on" id="pill-income" onclick="setTxType('income')">↑ Income</button>
+      <button class="type-pill expense" id="pill-expense" onclick="setTxType('expense')">↓ Expense</button>
+    </div>
+    <div class="amount-row">
+      <span class="amount-sym">$</span>
+      <input class="amount-in" id="amtIn" type="number" inputmode="decimal" placeholder="0.00"/>
+    </div>
+    <div class="form-field">
+      <input type="text" id="descIn" placeholder="Description (optional)" maxlength="50"/>
+    </div>
+
+    <!-- INCOME FIELDS -->
+    <div id="income-fields">
+      <div class="form-field source-select-wrap">
+        <select id="sourceSelect" onchange="onSourceChange()">
+          <option value="">— Select income source —</option>
+        </select>
+      </div>
+      <div id="income-detail-hint" style="display:none;">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px;text-align:center;cursor:pointer;" onclick="openIncomeDetailPopup()">＋ Add note / period (optional)</div>
+      </div>
+    </div>
+
+    <!-- EXPENSE FIELDS -->
+    <div id="expense-fields" style="display:none;">
+      <div class="form-field source-select-wrap">
+        <select id="expCatSelect" onchange="onExpCatChange()">
+          <option value="">— Select category —</option>
+          <option value="food">🍽 Food & Dining</option>
+          <option value="transport">🚌 Transport</option>
+          <option value="housing">🏠 Housing & Rent</option>
+          <option value="health">💊 Health</option>
+          <option value="subscriptions">📱 Subscriptions</option>
+          <option value="shopping">🛍 Shopping</option>
+          <option value="education">📚 Education</option>
+          <option value="travel">✈ Travel</option>
+          <option value="utilities">💡 Utilities</option>
+          <option value="other">📦 Other</option>
+        </select>
+      </div>
+      <div id="sub-selected-display" style="display:none;font-size:12px;color:var(--text2);margin-bottom:10px;padding:10px 12px;background:var(--bg2);border-radius:10px;border:1px solid var(--border);cursor:pointer;" onclick="openSubPopup()">
+        Tap to change subscription →
+      </div>
+    </div>
+
+    <button class="submit-btn" onclick="addTx()">ADD TRANSACTION</button>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- HISTORY VIEW -->
+  <div class="view" id="view-history">
+    <div class="hist-header">
+      <div class="hist-title">All Transactions</div>
+      <button class="hist-clear" onclick="clearAll()">Clear All</button>
+    </div>
+    <div class="tx-list" id="txList"></div>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- STATS VIEW -->
+  <div class="view" id="view-stats">
+    <div class="stats-grid">
+      <div class="stat-tile"><div class="stat-tile-lbl">Transactions</div><div class="stat-tile-val acc" id="stCount">0</div></div>
+      <div class="stat-tile"><div class="stat-tile-lbl">Savings Rate</div><div class="stat-tile-val inc" id="stSavings">0%</div></div>
+      <div class="stat-tile"><div class="stat-tile-lbl">Avg Expense</div><div class="stat-tile-val exp" id="stAvgExp">$0</div></div>
+      <div class="stat-tile"><div class="stat-tile-lbl">Avg Income</div><div class="stat-tile-val inc" id="stAvgInc">$0</div></div>
+    </div>
+    <div class="cat-section-title">Top Expense Categories</div>
+    <div class="cat-bars" id="catBars"></div>
+    <div class="bottom-pad"></div>
+  </div>
+</div>
+
+<!-- ════ POPUPS ════ -->
+
+<!-- Add Income Source -->
+<div class="overlay" id="overlay-source" onclick="closeOverlay('overlay-source',event)">
+  <div class="popup" style="position:relative;">
+    <div class="popup-handle"></div>
+    <div class="popup-title">Add Income Source</div>
+    <button class="popup-close" onclick="closeOverlay('overlay-source')">✕</button>
+    <div class="source-form">
+      <input id="src-name" placeholder="Source name (e.g. Main Job, Freelance)" type="text"/>
+      <select id="src-type">
+        <option value="">— Type —</option>
+        <option value="Salary">Salary</option>
+        <option value="Freelance">Freelance</option>
+        <option value="Business">Business</option>
+        <option value="Investment">Investment / Dividends</option>
+        <option value="Rental">Rental Income</option>
+        <option value="Gift">Gift / Transfer</option>
+        <option value="Side Job">Side Job</option>
+        <option value="Other">Other</option>
+      </select>
+      <input id="src-employer" placeholder="Employer / Client (optional)" type="text"/>
+      <button class="popup-save-btn" onclick="saveSource()">ADD SOURCE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Income Detail Note -->
+<div class="overlay" id="overlay-income-detail" onclick="closeOverlay('overlay-income-detail',event)">
+  <div class="popup" style="position:relative;">
+    <div class="popup-handle"></div>
+    <div class="popup-title">Income Details</div>
+    <button class="popup-close" onclick="closeOverlay('overlay-income-detail')">✕</button>
+    <div class="income-detail-form">
+      <input id="inc-period" placeholder="Pay period (e.g. March 2025, Week 12)" type="text"/>
+      <input id="inc-note" placeholder="Note (e.g. bonus, overtime)" type="text"/>
+      <div class="detail-note">Both fields are optional</div>
+      <button class="popup-save-btn" onclick="saveIncomeDetail()">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Subscriptions -->
+<div class="overlay" id="overlay-sub" onclick="closeOverlay('overlay-sub',event)">
+  <div class="popup" style="position:relative;">
+    <div class="popup-handle"></div>
+    <div class="popup-title">Subscriptions</div>
+    <button class="popup-close" onclick="closeOverlay('overlay-sub')">✕</button>
+    <input class="sub-search" id="subSearch" placeholder="Search subscriptions..." oninput="filterSubs()"/>
+    <div class="sub-grid" id="subGrid"></div>
+    <div class="sub-custom-wrap">
+      <div class="sub-custom-label">Not listed? Add custom:</div>
+      <input class="sub-custom-input" id="subCustom" placeholder="e.g. My Local Gym" type="text"/>
+    </div>
+    <button class="sub-add-btn" onclick="confirmSub()">SELECT SUBSCRIPTION</button>
+  </div>
+</div>
+
+<!-- Profile -->
+<div class="overlay" id="overlay-profile" onclick="closeOverlay('overlay-profile',event)">
+  <div class="popup profile-popup" style="position:relative;">
+    <div class="popup-handle"></div>
+    <button class="popup-close" onclick="closeOverlay('overlay-profile')">✕</button>
+    <div class="profile-popup-avatar" id="profileAvatarBig"></div>
+    <div class="profile-popup-name" id="profileName">—</div>
+    <div class="profile-popup-email" id="profileEmail">—</div>
+    <div class="profile-popup-phone" id="profilePhone">—</div>
+    <button class="profile-logout" onclick="doLogout()">Sign Out</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Telegram init
+if(window.Telegram?.WebApp){Telegram.WebApp.ready();Telegram.WebApp.expand();}
+
+// ── State
+let user = JSON.parse(localStorage.getItem('kassa_user')||'null');
+let sources = JSON.parse(localStorage.getItem('kassa_sources')||'[]');
+let txs = JSON.parse(localStorage.getItem('kassa_txs')||'[]');
+let isDark = localStorage.getItem('kassa_theme')!=='light';
+let currentTxType = 'income';
+let selectedSub = '';
+let incomeDetail = {period:'',note:''};
+let pendingSource = null; // for onboarding add source
+
+const SUBS = [
+  {name:'Netflix',color:'#E50914',abbr:'NF'},
+  {name:'Spotify',color:'#1DB954',abbr:'SP'},
+  {name:'YouTube',color:'#FF0000',abbr:'YT'},
+  {name:'Apple TV+',color:'#555',abbr:'TV'},
+  {name:'Disney+',color:'#113CCF',abbr:'D+'},
+  {name:'HBO Max',color:'#5822b4',abbr:'HB'},
+  {name:'Amazon Prime',color:'#FF9900',abbr:'AP'},
+  {name:'Hulu',color:'#3DBB3D',abbr:'HU'},
+  {name:'iCloud+',color:'#3478F6',abbr:'iC'},
+  {name:'Adobe CC',color:'#FF0000',abbr:'AD'},
+  {name:'Microsoft 365',color:'#D83B01',abbr:'MS'},
+  {name:'Notion',color:'#000',abbr:'NO'},
+  {name:'Canva',color:'#00C4CC',abbr:'CA'},
+  {name:'ChatGPT',color:'#19C37D',abbr:'GP'},
+  {name:'LinkedIn',color:'#0A66C2',abbr:'LI'},
+  {name:'Duolingo',color:'#58CC02',abbr:'DU'},
+  {name:'Audible',color:'#F5A623',abbr:'AU'},
+  {name:'Dropbox',color:'#0061FF',abbr:'DB'},
+];
+
+// ── Theme
+function applyTheme(){
+  document.body.classList.toggle('light',!isDark);
+  const icon = isDark ? '◑' : '○';
+  const tb = document.getElementById('themeBtn');
+  const atb = document.getElementById('authThemeBtn');
+  if(tb) tb.textContent = icon;
+  if(atb) atb.textContent = icon;
+  localStorage.setItem('kassa_theme', isDark ? 'dark' : 'light');
+}
+function toggleTheme(){isDark=!isDark;applyTheme();}
+applyTheme();
+
+// ── Screens
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+}
+
+// ── AUTH
+function authTab(tab){
+  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',['login','signup'][i]===tab));
+  document.getElementById('login-form').style.display = tab==='login'?'block':'none';
+  document.getElementById('signup-form').style.display = tab==='signup'?'block':'none';
+}
+
+function handlePhoto(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const wrap = document.getElementById('photoUpload');
+    wrap.innerHTML = `<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
+    localStorage.setItem('kassa_photo', ev.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if(!email||!pass){showToast('Please fill in all fields');return;}
+  const stored = JSON.parse(localStorage.getItem('kassa_user')||'null');
+  if(!stored){showToast('No account found — please sign up');return;}
+  if(stored.email!==email){showToast('Email not found');return;}
+  user = stored;
+  enterApp();
+}
+
+function doSignup(){
+  const name = document.getElementById('su-name').value.trim();
+  const email = document.getElementById('su-email').value.trim();
+  const phone = document.getElementById('su-phone').value.trim();
+  const pass = document.getElementById('su-pass').value;
+  if(!name||!email||!phone||!pass){showToast('Please fill in all fields');return;}
+  const photo = localStorage.getItem('kassa_photo')||'';
+  user = {name,email,phone,photo};
+  localStorage.setItem('kassa_user', JSON.stringify(user));
+  sources = [];
+  txs = [];
+  save();
+  showScreen('onboard');
+  renderSourceList();
+}
+
+function enterApp(){
+  updateAppHeader();
+  renderSourceSelect();
+  renderSubGrid(SUBS);
+  updateUI();
+  showScreen('app');
+}
+
+// ── ONBOARDING
+function renderSourceList(){
+  const el = document.getElementById('sourceList');
+  if(sources.length===0){el.innerHTML='<div style="text-align:center;font-size:12px;color:var(--text3);padding:16px;">No sources added yet</div>';return;}
+  el.innerHTML = sources.map((s,i)=>`
+    <div class="income-source-item">
+      <div>
+        <div class="income-source-name">${s.name}</div>
+        <div class="income-source-type">${s.type}${s.employer?' · '+s.employer:''}</div>
+      </div>
+      <button class="income-source-del" onclick="removeSource(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function removeSource(i){sources.splice(i,1);save();renderSourceList();}
+
+function openAddSourcePopup(){
+  document.getElementById('src-name').value='';
+  document.getElementById('src-type').value='';
+  document.getElementById('src-employer').value='';
+  pendingSource='onboard';
+  openOverlay('overlay-source');
+}
+
+function saveSource(){
+  const name = document.getElementById('src-name').value.trim();
+  const type = document.getElementById('src-type').value;
+  const employer = document.getElementById('src-employer').value.trim();
+  if(!name){showToast('Enter a source name');return;}
+  sources.push({name,type:type||'Other',employer});
+  save();
+  closeOverlay('overlay-source');
+  renderSourceList();
+  renderSourceSelect();
+}
+
+function finishOnboard(){
+  save();
+  enterApp();
+}
+
+// ── APP HEADER
+function updateAppHeader(){
+  if(!user) return;
+  const first = user.name.split(' ')[0];
+  document.getElementById('appName').textContent = first;
+  const av = document.getElementById('appAvatar');
+  if(user.photo){
+    av.innerHTML=`<img src="${user.photo}"/>`;
+  } else {
+    av.textContent = first[0].toUpperCase();
+  }
+}
+
+// ── PROFILE POPUP
+function openProfile(){
+  if(!user) return;
+  const big = document.getElementById('profileAvatarBig');
+  if(user.photo) big.innerHTML=`<img src="${user.photo}"/>`;
+  else big.textContent = user.name[0].toUpperCase();
+  document.getElementById('profileName').textContent = user.name;
+  document.getElementById('profileEmail').textContent = user.email;
+  document.getElementById('profilePhone').textContent = user.phone;
+  openOverlay('overlay-profile');
+}
+
+function doLogout(){
+  closeOverlay('overlay-profile');
+  showScreen('auth');
+  authTab('login');
+}
+
+// ── TABS
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['add','history','stats'][i]===tab));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+}
+
+// ── TX TYPE
+function setTxType(type){
+  currentTxType=type;
+  document.getElementById('pill-income').classList.toggle('on',type==='income');
+  document.getElementById('pill-expense').classList.toggle('on',type==='expense');
+  document.getElementById('income-fields').style.display = type==='income'?'block':'none';
+  document.getElementById('expense-fields').style.display = type==='expense'?'block':'none';
+  selectedSub='';
+  document.getElementById('sub-selected-display').style.display='none';
+  document.getElementById('expCatSelect').value='';
+}
+
+// ── SOURCE SELECT
+function renderSourceSelect(){
+  const sel = document.getElementById('sourceSelect');
+  sel.innerHTML = '<option value="">— Select income source —</option>';
+  sources.forEach((s,i)=>sel.innerHTML+=`<option value="${i}">${s.name} (${s.type})</option>`);
+  sel.innerHTML += '<option value="new">＋ Add new source…</option>';
+}
+
+function onSourceChange(){
+  const v = document.getElementById('sourceSelect').value;
+  if(v==='new'){
+    document.getElementById('src-name').value='';
+    document.getElementById('src-type').value='';
+    document.getElementById('src-employer').value='';
+    pendingSource='txform';
+    openOverlay('overlay-source');
+    document.getElementById('sourceSelect').value='';
+    return;
+  }
+  document.getElementById('income-detail-hint').style.display = v ? 'block' : 'none';
+}
+
+// ── INCOME DETAIL
+function openIncomeDetailPopup(){
+  document.getElementById('inc-period').value=incomeDetail.period||'';
+  document.getElementById('inc-note').value=incomeDetail.note||'';
+  openOverlay('overlay-income-detail');
+}
+
+function saveIncomeDetail(){
+  incomeDetail.period = document.getElementById('inc-period').value.trim();
+  incomeDetail.note = document.getElementById('inc-note').value.trim();
+  closeOverlay('overlay-income-detail');
+  showToast('Details saved');
+}
+
+// ── EXPENSE CATEGORY
+function onExpCatChange(){
+  const v = document.getElementById('expCatSelect').value;
+  if(v==='subscriptions'){
+    selectedSub='';
+    document.getElementById('sub-selected-display').style.display='none';
+    openSubPopup();
+  }
+}
+
+// ── SUBSCRIPTION POPUP
+function openSubPopup(){
+  document.getElementById('subSearch').value='';
+  document.getElementById('subCustom').value='';
+  renderSubGrid(SUBS);
+  openOverlay('overlay-sub');
+}
+
+function renderSubGrid(list){
+  document.getElementById('subGrid').innerHTML = list.map(s=>`
+    <div class="sub-tile ${selectedSub===s.name?'selected':''}" onclick="selectSub('${s.name}')">
+      <div class="sub-logo-text" style="background:${s.color}20;color:${s.color};font-size:10px;font-weight:800;">${s.abbr}</div>
+      <div class="sub-name">${s.name}</div>
+    </div>
+  `).join('');
+}
+
+function selectSub(name){
+  selectedSub=name;
+  renderSubGrid(SUBS.filter(s=>document.getElementById('subSearch').value===''||s.name.toLowerCase().includes(document.getElementById('subSearch').value.toLowerCase())));
+}
+
+function filterSubs(){
+  const q=document.getElementById('subSearch').value.toLowerCase();
+  renderSubGrid(q?SUBS.filter(s=>s.name.toLowerCase().includes(q)):SUBS);
+}
+
+function confirmSub(){
+  const custom=document.getElementById('subCustom').value.trim();
+  const chosen = custom||selectedSub;
+  if(!chosen){showToast('Select or enter a subscription');return;}
+  selectedSub=chosen;
+  const disp=document.getElementById('sub-selected-display');
+  disp.textContent=`📱 ${chosen} — tap to change`;
+  disp.style.display='block';
+  closeOverlay('overlay-sub');
+}
+
+// ── ADD TRANSACTION
+function addTx(){
+  const amt=parseFloat(document.getElementById('amtIn').value);
+  const desc=document.getElementById('descIn').value.trim();
+  if(!amt||amt<=0){showToast('Enter a valid amount');return;}
+
+  let category='', detail='';
+  if(currentTxType==='income'){
+    const si=document.getElementById('sourceSelect').value;
+    if(!si){showToast('Select an income source');return;}
+    const src=sources[parseInt(si)];
+    category=src?`${src.name} · ${src.type}`:'Income';
+    if(incomeDetail.period||incomeDetail.note){
+      detail=[incomeDetail.period,incomeDetail.note].filter(Boolean).join(' · ');
+    }
+  } else {
+    const cat=document.getElementById('expCatSelect').value;
+    if(!cat){showToast('Select a category');return;}
+    const labels={food:'Food & Dining',transport:'Transport',housing:'Housing',health:'Health',subscriptions:'Subscriptions',shopping:'Shopping',education:'Education',travel:'Travel',utilities:'Utilities',other:'Other'};
+    category = cat==='subscriptions'&&selectedSub ? `📱 ${selectedSub}` : labels[cat]||cat;
+  }
+
+  txs.unshift({
+    id:Date.now(), type:currentTxType, amt, desc:desc||category, category, detail,
+    date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'})
+  });
+  save();
+  updateUI();
+
+  document.getElementById('amtIn').value='';
+  document.getElementById('descIn').value='';
+  document.getElementById('sourceSelect').value='';
+  document.getElementById('expCatSelect').value='';
+  document.getElementById('income-detail-hint').style.display='none';
+  document.getElementById('sub-selected-display').style.display='none';
+  selectedSub=''; incomeDetail={period:'',note:''};
+  showToast('Transaction added ✓');
+}
+
+function deleteTx(id){txs=txs.filter(t=>t.id!==id);save();updateUI();}
+function clearAll(){if(!txs.length)return;if(confirm('Clear all transactions?')){txs=[];save();updateUI();}}
+
+// ── UI UPDATE
+function fmt(n){return '$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+function updateUI(){
+  const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amt,0);
+  const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amt,0);
+  const bal=inc-exp;
+
+  const bv=document.getElementById('balVal');
+  bv.textContent=fmt(bal);
+  bv.className='balance-value'+(bal>0?' pos':bal<0?' neg':'');
+  document.getElementById('balInc').textContent=fmt(inc);
+  document.getElementById('balExp').textContent=fmt(exp);
+
+  // History
+  const list=document.getElementById('txList');
+  const iconMap={food:'🍽',transport:'🚌',housing:'🏠',health:'💊',subscriptions:'📱',shopping:'🛍',education:'📚',travel:'✈',utilities:'💡',other:'📦'};
+  if(!txs.length){
+    list.innerHTML=`<div class="empty-msg"><div class="e-ico">📭</div><p>No transactions yet.<br/>Add your first one above.</p></div>`;
+  } else {
+    list.innerHTML=txs.map(t=>`
+      <div class="tx-card">
+        <div class="tx-icon ${t.type}">${t.type==='income'?'↑':'↓'}</div>
+        <div class="tx-body">
+          <div class="tx-name">${t.desc}</div>
+          <div class="tx-meta">${t.category}${t.detail?' · '+t.detail:''} · ${t.date}</div>
+        </div>
+        <div class="tx-right">
+          <div class="tx-amt ${t.type}">${t.type==='income'?'+':'-'}${fmt(t.amt)}</div>
+          <button class="tx-del" onclick="deleteTx(${t.id})">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Stats
+  const expTxs=txs.filter(t=>t.type==='expense');
+  const incTxs=txs.filter(t=>t.type==='income');
+  document.getElementById('stCount').textContent=txs.length;
+  document.getElementById('stSavings').textContent=inc>0?Math.round(((inc-exp)/inc)*100)+'%':'0%';
+  document.getElementById('stAvgExp').textContent=expTxs.length?fmt(exp/expTxs.length):'$0';
+  document.getElementById('stAvgInc').textContent=incTxs.length?fmt(inc/incTxs.length):'$0';
+
+  const catMap={};
+  expTxs.forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.amt;});
+  const sorted=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxV=sorted[0]?.[1]||1;
+  document.getElementById('catBars').innerHTML=sorted.length
+    ?sorted.map(([c,v])=>`
+      <div class="cat-bar-item">
+        <div class="cat-bar-top"><div class="cat-bar-name">${c}</div><div class="cat-bar-amt">${fmt(v)}</div></div>
+        <div class="cat-track"><div class="cat-fill" style="width:${(v/maxV*100).toFixed(1)}%"></div></div>
+      </div>`).join('')
+    :`<div class="empty-msg"><p>No expense data yet.</p></div>`;
+}
+
+// ── SAVE
+function save(){
+  localStorage.setItem('kassa_sources',JSON.stringify(sources));
+  localStorage.setItem('kassa_txs',JSON.stringify(txs));
+}
+
+// ── OVERLAY
+function openOverlay(id){document.getElementById(id).classList.add('open');}
+function closeOverlay(id,e){
+  if(e&&e.target!==document.getElementById(id))return;
+  document.getElementById(id).classList.remove('open');
+}
+
+// ── TOAST
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+// ── INIT
+(function init(){
+  if(user){
+    sources=JSON.parse(localStorage.getItem('kassa_sources')||'[]');
+    txs=JSON.parse(localStorage.getItem('kassa_txs')||'[]');
+    renderSubGrid(SUBS);
+    renderSourceSelect();
+    updateAppHeader();
+    updateUI();
+    showScreen('app');
+  } else {
+    showScreen('auth');
+  }
+})();
+</script>
+</body>
+</html>
