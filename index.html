@@ -548,7 +548,7 @@ async function loadUserData(){
       if(userProfile.currency){ userCurrency=userProfile.currency; }
       if(userProfile.currencySymbol){ userCurrencySymbol=userProfile.currencySymbol; }
     }
-    await fetchExchangeRates();
+    fetchExchangeRates(); // background — no await
     const ss = await db.collection('users').doc(currentUser.uid).collection('sources').get();
     sources = ss.docs.map(d=>({id:d.id,...d.data()}));
     const ts = await db.collection('users').doc(currentUser.uid).collection('transactions').orderBy('createdAt','desc').get();
@@ -1134,10 +1134,9 @@ async function saveLocationAndContinue(country){
       country: country.name, currency: country.currency, currencySymbol: country.symbol
     }).catch(()=>{});
   }
-  // Fetch exchange rates
-  await fetchExchangeRates();
-  // Update all currency displays
-  updateCurrencyDisplay();
+  // Fetch exchange rates in background
+  updateCurrencyDisplay(); // show immediately with loading state
+  fetchExchangeRates().then(()=>{ updateCurrencyDisplay(); updateRateDisplay(document.getElementById('txCurrencySelect')?.value||userCurrency); });
   showScreen('onboard');
   renderSourceList();
 }
@@ -1146,8 +1145,12 @@ async function saveLocationAndContinue(country){
 // EXCHANGE RATES
 // ═══════════════════════════════════════════
 async function fetchExchangeRates(){
+  document.getElementById('rateDisplay') && (document.getElementById('rateDisplay').textContent='fetching rate...');
   try {
-    const res = await fetch('https://ethioblackmarket.com/api/latest-prices?period=daily');
+    const controller = new AbortController();
+    const timeout = setTimeout(()=>controller.abort(), 5000); // 5s timeout
+    const res = await fetch('https://ethioblackmarket.com/api/latest-prices?period=daily', {signal: controller.signal});
+    clearTimeout(timeout);
     const data = await res.json();
     // data is array of {currency, price, ...} where price = X ETB per 1 unit of currency
     if(Array.isArray(data)){
@@ -1171,7 +1174,10 @@ async function fetchExchangeRates(){
     }
     console.log('Exchange rates loaded:', exchangeRates);
   } catch(e){
-    console.error('Rate fetch failed:', e);
+    if(e.name==='AbortError') console.warn('Exchange rate fetch timed out');
+    else console.error('Rate fetch failed:', e);
+    const el = document.getElementById('rateDisplay');
+    if(el && el.textContent==='fetching rate...') el.textContent='rate unavailable';
   }
 }
 
