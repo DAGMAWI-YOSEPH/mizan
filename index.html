@@ -124,7 +124,8 @@ input,select,button{font-family:'DM Sans',sans-serif;}
 .tx-amt{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;}
 .tx-amt.income{color:var(--income);}
 .tx-amt.expense{color:var(--expense);}
-.tx-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;margin-top:3px;display:block;margin-left:auto;}
+.tx-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;}
+.tx-edit{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;}
 .empty-msg{text-align:center;padding:48px 20px;color:var(--text3);}
 .empty-msg p{font-size:12px;line-height:1.6;}
 
@@ -414,12 +415,11 @@ input,select,button{font-family:'DM Sans',sans-serif;}
 
 <div class="toast" id="toast"></div>
 
-<!-- FIREBASE -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
+<!-- FIREBASE COMPAT (no module needed, functions available globally) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
 const firebaseConfig = {
   apiKey: "AIzaSyByMiG25E_xIdKMq8J7Sgb3Oc9Yi7CeZYE",
   authDomain: "mizantrackbot.firebaseapp.com",
@@ -428,24 +428,17 @@ const firebaseConfig = {
   messagingSenderId: "44729496365",
   appId: "1:44729496365:web:ec115e2084aca8aec259a4"
 };
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-// ── Telegram
 if(window.Telegram?.WebApp){Telegram.WebApp.ready();Telegram.WebApp.expand();}
 
-// ── State
-let currentUser = null;
-let userProfile = null;
-let sources = [];
-let txs = [];
+let currentUser = null, userProfile = null, sources = [], txs = [];
 let isDark = localStorage.getItem('mizan_theme') !== 'light';
-let currentTxType = 'income';
-let selectedSub = '';
-let incomeDetail = {period:'',note:''};
-let photoBase64 = '';
+let currentTxType = 'income', selectedSub = '', incomeDetail = {period:'',note:''}, photoBase64 = '';
+let editingTxId = null;
+let skipAuthRedirect = false;
 
 const SUBS = [
   {name:'Netflix',color:'#E50914',abbr:'NF'},{name:'Spotify',color:'#1DB954',abbr:'SP'},
@@ -459,35 +452,33 @@ const SUBS = [
   {name:'Audible',color:'#F5A623',abbr:'AU'},{name:'Hulu',color:'#3DBB3D',abbr:'HU'},
 ];
 
-// ── Theme
+// THEME
 function applyTheme(){
   document.body.classList.toggle('light',!isDark);
-  const icon = isDark ? '◑' : '○';
-  ['themeBtn','authThemeBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=icon;});
+  const icon = isDark ? '&#9681;' : '&#9675;';
+  ['themeBtn','authThemeBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=icon;});
   localStorage.setItem('mizan_theme', isDark?'dark':'light');
 }
-window.toggleTheme = ()=>{isDark=!isDark;applyTheme();};
+function toggleTheme(){isDark=!isDark;applyTheme();}
 applyTheme();
 
-// ── Screens
+// SCREENS
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  const el = document.getElementById('screen-'+id);
+  const el=document.getElementById('screen-'+id);
   if(el) el.classList.add('active');
   document.getElementById('loadingScreen').style.display='none';
 }
 
-// ── Auth state listener
-// openOverlay defined early so all functions can use it
+// OVERLAY
 function openOverlay(id){document.getElementById(id).classList.add('open');}
 function closeOverlay(id,e){if(e&&e.target!==document.getElementById(id))return;document.getElementById(id).classList.remove('open');}
-window.openOverlay=openOverlay; window.closeOverlay=closeOverlay;
 
-let skipAuthRedirect = false;
-onAuthStateChanged(auth, async (fbUser) => {
+// AUTH STATE
+auth.onAuthStateChanged(async (fbUser)=>{
   if(fbUser){
-    currentUser = fbUser;
-    if(skipAuthRedirect){ skipAuthRedirect=false; return; }
+    currentUser=fbUser;
+    if(skipAuthRedirect){skipAuthRedirect=false;return;}
     await loadUserData();
     renderSubGrid(SUBS);
     renderSourceSelect();
@@ -495,171 +486,165 @@ onAuthStateChanged(auth, async (fbUser) => {
     updateUI();
     showScreen('app');
   } else {
-    currentUser = null;
+    currentUser=null;
     showScreen('auth');
   }
 });
 
-// ── Load user data from Firestore
 async function loadUserData(){
   try {
-    const profileDoc = await getDoc(doc(db,'users',currentUser.uid));
-    if(profileDoc.exists()) userProfile = profileDoc.data();
-
-    const sourcesSnap = await getDocs(collection(db,'users',currentUser.uid,'sources'));
-    sources = sourcesSnap.docs.map(d=>({id:d.id,...d.data()}));
-
-    const txSnap = await getDocs(query(collection(db,'users',currentUser.uid,'transactions'), orderBy('createdAt','desc')));
-    txs = txSnap.docs.map(d=>({firestoreId:d.id,...d.data()}));
-  } catch(e){ console.error(e); }
+    const pd = await db.collection('users').doc(currentUser.uid).get();
+    if(pd.exists) userProfile=pd.data();
+    const ss = await db.collection('users').doc(currentUser.uid).collection('sources').get();
+    sources = ss.docs.map(d=>({id:d.id,...d.data()}));
+    const ts = await db.collection('users').doc(currentUser.uid).collection('transactions').orderBy('createdAt','desc').get();
+    txs = ts.docs.map(d=>({firestoreId:d.id,...d.data()}));
+  } catch(e){console.error(e);}
 }
 
-// ── AUTH TABS
-window.authTab = (tab)=>{
+// AUTH TABS
+function authTab(tab){
   document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',['login','signup'][i]===tab));
-  document.getElementById('login-form').style.display = tab==='login'?'block':'none';
-  document.getElementById('signup-form').style.display = tab==='signup'?'block':'none';
+  document.getElementById('login-form').style.display=tab==='login'?'block':'none';
+  document.getElementById('signup-form').style.display=tab==='signup'?'block':'none';
   document.getElementById('loginErr').textContent='';
   document.getElementById('signupErr').textContent='';
-};
+}
 
-window.handlePhoto = (e)=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    photoBase64 = ev.target.result;
-    document.getElementById('photoUpload').innerHTML = `<img src="${photoBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
+function handlePhoto(e){
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    photoBase64=ev.target.result;
+    document.getElementById('photoUpload').innerHTML=`<img src="${photoBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
   };
   reader.readAsDataURL(file);
-};
+}
 
-window.doLogin = async ()=>{
-  const email = document.getElementById('login-email').value.trim();
-  const pass = document.getElementById('login-pass').value;
-  const btn = document.getElementById('loginBtn');
-  const err = document.getElementById('loginErr');
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-pass').value;
+  const btn=document.getElementById('loginBtn');
+  const err=document.getElementById('loginErr');
   if(!email||!pass){err.textContent='Please fill in all fields';return;}
   btn.disabled=true; btn.textContent='SIGNING IN...';
   try {
-    await signInWithEmailAndPassword(auth, email, pass);
+    await auth.signInWithEmailAndPassword(email,pass);
   } catch(e){
-    err.textContent = e.code==='auth/invalid-credential' ? 'Wrong email or password' : e.message;
+    err.textContent=e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'?'Wrong email or password':e.message;
     btn.disabled=false; btn.textContent='SIGN IN';
   }
-};
+}
 
-window.doSignup = async ()=>{
-  const name = document.getElementById('su-name').value.trim();
-  const email = document.getElementById('su-email').value.trim();
-  const phone = document.getElementById('su-phone').value.trim();
-  const pass = document.getElementById('su-pass').value;
-  const btn = document.getElementById('signupBtn');
-  const err = document.getElementById('signupErr');
+async function doSignup(){
+  const name=document.getElementById('su-name').value.trim();
+  const email=document.getElementById('su-email').value.trim();
+  const phone=document.getElementById('su-phone').value.trim();
+  const pass=document.getElementById('su-pass').value;
+  const btn=document.getElementById('signupBtn');
+  const err=document.getElementById('signupErr');
   if(!name||!email||!phone||!pass){err.textContent='Please fill in all fields';return;}
   if(pass.length<6){err.textContent='Password must be at least 6 characters';return;}
   btn.disabled=true; btn.textContent='CREATING...';
   try {
-    skipAuthRedirect = true;
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    userProfile = {name, email, phone, photo: photoBase64};
-    await setDoc(doc(db,'users',cred.user.uid), userProfile);
+    skipAuthRedirect=true;
+    const cred=await auth.createUserWithEmailAndPassword(email,pass);
+    userProfile={name,email,phone,photo:photoBase64};
+    await db.collection('users').doc(cred.user.uid).set(userProfile);
+    currentUser=cred.user;
     sources=[]; txs=[];
     showScreen('onboard');
     renderSourceList();
     btn.disabled=false; btn.textContent='CREATE ACCOUNT';
   } catch(e){
-    err.textContent = e.code==='auth/email-already-in-use' ? 'Email already registered' : e.message;
+    skipAuthRedirect=false;
+    err.textContent=e.code==='auth/email-already-in-use'?'Email already registered':e.message;
     btn.disabled=false; btn.textContent='CREATE ACCOUNT';
   }
-};
+}
 
-// ── ONBOARDING
+// ONBOARDING
 function renderSourceList(){
-  const el = document.getElementById('sourceList');
+  const el=document.getElementById('sourceList');
   if(!sources.length){el.innerHTML='<div style="text-align:center;font-size:12px;color:var(--text3);padding:16px;">No sources added yet</div>';return;}
-  el.innerHTML = sources.map((s,i)=>`
+  el.innerHTML=sources.map((s,i)=>`
     <div class="income-source-item">
       <div><div class="income-source-name">${s.name}</div><div class="income-source-type">${s.type}${s.employer?' · '+s.employer:''}</div></div>
-      <button class="income-source-del" onclick="removeSource(${i})">✕</button>
+      <button class="income-source-del" onclick="removeSource(${i})">&#x2715;</button>
     </div>`).join('');
 }
 
-window.removeSource = async (i)=>{
-  const s = sources[i];
-  if(s.id && currentUser) await deleteDoc(doc(db,'users',currentUser.uid,'sources',s.id)).catch(()=>{});
+async function removeSource(i){
+  const s=sources[i];
+  if(s.id&&currentUser) await db.collection('users').doc(currentUser.uid).collection('sources').doc(s.id).delete().catch(()=>{});
   sources.splice(i,1);
   renderSourceList(); renderSourceSelect();
-};
+}
 
-window.openAddSourcePopup = ()=>{
+function openAddSourcePopup(){
   document.getElementById('src-name').value='';
   document.getElementById('src-type').value='';
   document.getElementById('src-employer').value='';
   openOverlay('overlay-source');
-};
+}
 
-window.saveSource = async ()=>{
-  const name = document.getElementById('src-name').value.trim();
-  const type = document.getElementById('src-type').value;
-  const employer = document.getElementById('src-employer').value.trim();
+async function saveSource(){
+  const name=document.getElementById('src-name').value.trim();
+  const type=document.getElementById('src-type').value;
+  const employer=document.getElementById('src-employer').value.trim();
   if(!name){showToast('Enter a source name');return;}
-  const src = {name, type:type||'Other', employer};
+  const src={name,type:type||'Other',employer};
   if(currentUser){
-    const ref = await addDoc(collection(db,'users',currentUser.uid,'sources'), src);
-    src.id = ref.id;
+    const ref=await db.collection('users').doc(currentUser.uid).collection('sources').add(src);
+    src.id=ref.id;
   }
   sources.push(src);
   closeOverlay('overlay-source');
   renderSourceList(); renderSourceSelect();
-};
-
-window.finishOnboard = async ()=>{
-  if(currentUser && sources.length){
-    // sources already saved individually
-  }
-  updateAppHeader(); renderSourceSelect(); renderSubGrid(SUBS); updateUI();
-  showScreen('app');
-};
-
-// ── APP HEADER
-function updateAppHeader(){
-  const profile = userProfile;
-  if(!profile) return;
-  const first = profile.name.split(' ')[0];
-  document.getElementById('appName').textContent = first;
-  const av = document.getElementById('appAvatar');
-  if(profile.photo) av.innerHTML=`<img src="${profile.photo}"/>`;
-  else av.textContent = first[0].toUpperCase();
 }
 
-// ── PROFILE
-window.openProfile = ()=>{
-  if(!userProfile) return;
-  const big = document.getElementById('profileAvatarBig');
+async function finishOnboard(){
+  updateAppHeader(); renderSourceSelect(); renderSubGrid(SUBS); updateUI();
+  showScreen('app');
+}
+
+// APP HEADER
+function updateAppHeader(){
+  if(!userProfile)return;
+  const first=userProfile.name.split(' ')[0];
+  document.getElementById('appName').textContent=first;
+  const av=document.getElementById('appAvatar');
+  if(userProfile.photo) av.innerHTML=`<img src="${userProfile.photo}"/>`;
+  else av.textContent=first[0].toUpperCase();
+}
+
+// PROFILE
+function openProfile(){
+  if(!userProfile)return;
+  const big=document.getElementById('profileAvatarBig');
   if(userProfile.photo) big.innerHTML=`<img src="${userProfile.photo}"/>`;
-  else big.textContent = userProfile.name[0].toUpperCase();
-  document.getElementById('profileName').textContent = userProfile.name;
-  document.getElementById('profileEmail').textContent = userProfile.email;
-  document.getElementById('profilePhone').textContent = userProfile.phone;
+  else big.textContent=userProfile.name[0].toUpperCase();
+  document.getElementById('profileName').textContent=userProfile.name;
+  document.getElementById('profileEmail').textContent=userProfile.email;
+  document.getElementById('profilePhone').textContent=userProfile.phone;
   openOverlay('overlay-profile');
-};
+}
 
-window.doLogout = async ()=>{
+async function doLogout(){
   closeOverlay('overlay-profile');
-  await signOut(auth);
+  await auth.signOut();
   txs=[]; sources=[]; userProfile=null;
-};
+}
 
-// ── TABS
-window.switchTab = (tab)=>{
+// TABS
+function switchTab(tab){
   document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['add','history','stats'][i]===tab));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+tab).classList.add('active');
-};
+}
 
-// ── TX TYPE
-window.setTxType = (type)=>{
+// TX TYPE
+function setTxType(type){
   currentTxType=type;
   document.getElementById('pill-income').classList.toggle('on',type==='income');
   document.getElementById('pill-expense').classList.toggle('on',type==='expense');
@@ -668,18 +653,18 @@ window.setTxType = (type)=>{
   selectedSub='';
   document.getElementById('sub-selected-display').style.display='none';
   document.getElementById('expCatSelect').value='';
-};
-
-// ── SOURCE SELECT
-function renderSourceSelect(){
-  const sel = document.getElementById('sourceSelect');
-  sel.innerHTML='<option value="">— Select income source —</option>';
-  sources.forEach((s,i)=>sel.innerHTML+=`<option value="${i}">${s.name} (${s.type})</option>`);
-  sel.innerHTML+='<option value="new">＋ Add new source…</option>';
 }
 
-window.onSourceChange = ()=>{
-  const v = document.getElementById('sourceSelect').value;
+// SOURCE SELECT
+function renderSourceSelect(){
+  const sel=document.getElementById('sourceSelect');
+  sel.innerHTML='<option value="">&#8212; Select income source &#8212;</option>';
+  sources.forEach((s,i)=>sel.innerHTML+=`<option value="${i}">${s.name} (${s.type})</option>`);
+  sel.innerHTML+='<option value="new">&#xFF0B; Add new source&#8230;</option>';
+}
+
+function onSourceChange(){
+  const v=document.getElementById('sourceSelect').value;
   if(v==='new'){
     document.getElementById('src-name').value='';
     document.getElementById('src-type').value='';
@@ -689,34 +674,34 @@ window.onSourceChange = ()=>{
     return;
   }
   document.getElementById('income-detail-hint').style.display=v?'block':'none';
-};
+}
 
-// ── INCOME DETAIL
-window.openIncomeDetailPopup = ()=>{
+// INCOME DETAIL
+function openIncomeDetailPopup(){
   document.getElementById('inc-period').value=incomeDetail.period||'';
   document.getElementById('inc-note').value=incomeDetail.note||'';
   openOverlay('overlay-income-detail');
-};
-window.saveIncomeDetail = ()=>{
+}
+function saveIncomeDetail(){
   incomeDetail.period=document.getElementById('inc-period').value.trim();
   incomeDetail.note=document.getElementById('inc-note').value.trim();
   closeOverlay('overlay-income-detail');
   showToast('Details saved');
-};
+}
 
-// ── EXPENSE CATEGORY
-window.onExpCatChange = ()=>{
-  const v = document.getElementById('expCatSelect').value;
+// EXPENSE CATEGORY
+function onExpCatChange(){
+  const v=document.getElementById('expCatSelect').value;
   if(v==='subscriptions'){selectedSub='';document.getElementById('sub-selected-display').style.display='none';openSubPopup();}
-};
+}
 
-// ── SUBSCRIPTIONS
-window.openSubPopup = ()=>{
+// SUBSCRIPTIONS
+function openSubPopup(){
   document.getElementById('subSearch').value='';
   document.getElementById('subCustom').value='';
   renderSubGrid(SUBS);
   openOverlay('overlay-sub');
-};
+}
 function renderSubGrid(list){
   document.getElementById('subGrid').innerHTML=list.map(s=>`
     <div class="sub-tile ${selectedSub===s.name?'selected':''}" onclick="selectSub('${s.name}')">
@@ -724,12 +709,12 @@ function renderSubGrid(list){
       <div class="sub-name">${s.name}</div>
     </div>`).join('');
 }
-window.selectSub = (name)=>{selectedSub=name;filterSubs();};
-window.filterSubs = ()=>{
+function selectSub(name){selectedSub=name;filterSubs();}
+function filterSubs(){
   const q=document.getElementById('subSearch').value.toLowerCase();
   renderSubGrid(q?SUBS.filter(s=>s.name.toLowerCase().includes(q)):SUBS);
-};
-window.confirmSub = ()=>{
+}
+function confirmSub(){
   const custom=document.getElementById('subCustom').value.trim();
   const chosen=custom||selectedSub;
   if(!chosen){showToast('Select or enter a subscription');return;}
@@ -738,10 +723,10 @@ window.confirmSub = ()=>{
   disp.textContent=`${chosen} — tap to change`;
   disp.style.display='block';
   closeOverlay('overlay-sub');
-};
+}
 
-// ── ADD TRANSACTION
-window.addTx = async ()=>{
+// ADD / EDIT TRANSACTION
+async function addTx(){
   const amt=parseFloat(document.getElementById('amtIn').value);
   const desc=document.getElementById('descIn').value.trim();
   if(!amt||amt<=0){showToast('Enter a valid amount');return;}
@@ -758,19 +743,29 @@ window.addTx = async ()=>{
     const labels={food:'Food & Dining',transport:'Transport',housing:'Housing',health:'Health',subscriptions:'Subscriptions',shopping:'Shopping',education:'Education',travel:'Travel',utilities:'Utilities',other:'Other'};
     category=cat==='subscriptions'&&selectedSub?selectedSub:labels[cat]||cat;
   }
-  const tx={
-    type:currentTxType, amt, desc:desc||category, category, detail,
-    date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),
-    createdAt: Date.now()
-  };
   const btn=document.querySelector('.submit-btn');
   btn.disabled=true;
   try {
-    if(currentUser){
-      const ref=await addDoc(collection(db,'users',currentUser.uid,'transactions'),tx);
-      tx.firestoreId=ref.id;
+    if(editingTxId!==null){
+      // UPDATE existing
+      const idx=txs.findIndex(t=>t.firestoreId===editingTxId);
+      const updated={...txs[idx], amt, desc:desc||category, category, detail};
+      if(currentUser&&editingTxId) await db.collection('users').doc(currentUser.uid).collection('transactions').doc(editingTxId).update({amt,desc:desc||category,category,detail});
+      if(idx>-1) txs[idx]=updated;
+      editingTxId=null;
+      btn.textContent='ADD TRANSACTION';
+      showToast('Transaction updated ✓');
+    } else {
+      // NEW
+      const tx={type:currentTxType,amt,desc:desc||category,category,detail,
+        date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),createdAt:Date.now()};
+      if(currentUser){
+        const ref=await db.collection('users').doc(currentUser.uid).collection('transactions').add(tx);
+        tx.firestoreId=ref.id;
+      }
+      txs.unshift(tx);
+      showToast('Transaction added ✓');
     }
-    txs.unshift(tx);
     updateUI();
     document.getElementById('amtIn').value='';
     document.getElementById('descIn').value='';
@@ -779,33 +774,45 @@ window.addTx = async ()=>{
     document.getElementById('income-detail-hint').style.display='none';
     document.getElementById('sub-selected-display').style.display='none';
     selectedSub=''; incomeDetail={period:'',note:''};
-    showToast('Transaction added ✓');
-  } catch(e){showToast('Error saving — try again');}
+    switchTab('history');
+  } catch(e){showToast('Error — try again'); console.error(e);}
   btn.disabled=false;
-};
+}
 
-window.deleteTx = async (firestoreId, localIdx)=>{
+function editTx(firestoreId){
+  const tx=txs.find(t=>t.firestoreId===firestoreId);
+  if(!tx)return;
+  editingTxId=firestoreId;
+  switchTab('add');
+  setTxType(tx.type);
+  document.getElementById('amtIn').value=tx.amt;
+  document.getElementById('descIn').value=tx.desc!==tx.category?tx.desc:'';
+  document.querySelector('.submit-btn').textContent='SAVE CHANGES';
+  showToast('Editing transaction — make changes and save');
+}
+
+async function deleteTx(firestoreId,localIdx){
   try {
-    if(currentUser && firestoreId) await deleteDoc(doc(db,'users',currentUser.uid,'transactions',firestoreId));
+    if(currentUser&&firestoreId) await db.collection('users').doc(currentUser.uid).collection('transactions').doc(firestoreId).delete();
     txs.splice(localIdx,1);
     updateUI();
   } catch(e){showToast('Error deleting');}
-};
+}
 
-window.clearAll = async ()=>{
-  if(!txs.length) return;
-  if(!confirm('Clear all transactions?')) return;
+async function clearAll(){
+  if(!txs.length)return;
+  if(!confirm('Clear all transactions?'))return;
   try {
     if(currentUser){
-      const snap=await getDocs(collection(db,'users',currentUser.uid,'transactions'));
-      await Promise.all(snap.docs.map(d=>deleteDoc(d.ref)));
+      const snap=await db.collection('users').doc(currentUser.uid).collection('transactions').get();
+      await Promise.all(snap.docs.map(d=>d.ref.delete()));
     }
     txs=[];
     updateUI();
   } catch(e){showToast('Error clearing');}
-};
+}
 
-// ── UI
+// UI
 function fmt(n){return 'ETB '+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
 function updateUI(){
@@ -819,18 +826,21 @@ function updateUI(){
   document.getElementById('balExp').textContent=fmt(exp);
   const list=document.getElementById('txList');
   if(!txs.length){
-    list.innerHTML=`<div class="empty-msg"><p>No transactions yet.<br/>Add your first one above.</p></div>`;
+    list.innerHTML='<div class="empty-msg"><p>No transactions yet.<br/>Add your first one above.</p></div>';
   } else {
     list.innerHTML=txs.map((t,i)=>`
       <div class="tx-card">
-        <div class="tx-icon ${t.type}">${t.type==='income'?'↑':'↓'}</div>
+        <div class="tx-icon ${t.type}">${t.type==='income'?'&#8593;':'&#8595;'}</div>
         <div class="tx-body">
           <div class="tx-name">${t.desc}</div>
           <div class="tx-meta">${t.category}${t.detail?' · '+t.detail:''} · ${t.date}</div>
         </div>
         <div class="tx-right">
           <div class="tx-amt ${t.type}">${t.type==='income'?'+':'-'}${fmt(t.amt)}</div>
-          <button class="tx-del" onclick="deleteTx('${t.firestoreId||''}',${i})">✕</button>
+          <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px;">
+            <button class="tx-edit" onclick="editTx('${t.firestoreId||''}')">&#9998;</button>
+            <button class="tx-del" onclick="deleteTx('${t.firestoreId||''}',${i})">&#x2715;</button>
+          </div>
         </div>
       </div>`).join('');
   }
@@ -850,14 +860,10 @@ function updateUI(){
         <div class="cat-bar-top"><div class="cat-bar-name">${c}</div><div class="cat-bar-amt">${fmt(v)}</div></div>
         <div class="cat-track"><div class="cat-fill" style="width:${(v/maxV*100).toFixed(1)}%"></div></div>
       </div>`).join('')
-    :`<div class="empty-msg"><p>No expense data yet.</p></div>`;
+    :'<div class="empty-msg"><p>No expense data yet.</p></div>';
 }
 
-
-
-// ── TOAST
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
-window.showToast=showToast;
 </script>
 </body>
 </html>
