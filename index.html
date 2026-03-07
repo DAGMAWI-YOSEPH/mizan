@@ -184,6 +184,20 @@ input,select,button{font-family:'DM Sans',sans-serif;}
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 18px;font-size:12px;opacity:0;transition:all 0.25s;pointer-events:none;white-space:nowrap;z-index:200;color:var(--text);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .bottom-pad{height:28px;}
+.loc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.loc-tile{background:var(--bg2);border:1.5px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all 0.15s;}
+.loc-tile:active{border-color:var(--accent);background:rgba(200,184,154,0.1);}
+.loc-tile-icon{font-size:28px;}
+.loc-tile-name{font-size:12px;font-weight:500;text-align:center;color:var(--text2);}
+.loc-back{background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;margin-bottom:12px;padding:0;}
+.loc-search{width:100%;padding:11px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text);outline:none;margin-bottom:12px;}
+.loc-search::placeholder{color:var(--text3);}
+.loc-list{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;}
+.loc-country-item{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:13px 14px;cursor:pointer;transition:all 0.15s;}
+.loc-country-item:active{border-color:var(--accent);}
+.loc-country-flag{font-size:22px;}
+.loc-country-name{font-size:13px;font-weight:500;}
+.loc-country-currency{font-size:11px;color:var(--text3);}
 </style>
 </head>
 <body>
@@ -263,6 +277,28 @@ input,select,button{font-family:'DM Sans',sans-serif;}
   </div>
 </div>
 
+<!-- LOCATION PICKER -->
+<div class="screen" id="screen-location">
+  <div class="onboard-wrap">
+    <div class="onboard-header">
+      <div class="onboard-title" id="locTitle">Where are you?</div>
+      <div class="onboard-sub" id="locSub">Let&#39;s set up your currency. Start by selecting your planet.</div>
+    </div>
+    <div id="locStep-planet">
+      <div class="loc-grid" id="locPlanetGrid"></div>
+    </div>
+    <div id="locStep-continent" style="display:none;">
+      <button class="loc-back" onclick="locBack('planet')">&#8592; Back</button>
+      <div class="loc-grid" id="locContinentGrid"></div>
+    </div>
+    <div id="locStep-country" style="display:none;">
+      <button class="loc-back" onclick="locBack('continent')">&#8592; Back</button>
+      <input class="loc-search" id="locCountrySearch" placeholder="Search country..." oninput="filterCountries()"/>
+      <div class="loc-list" id="locCountryList"></div>
+    </div>
+  </div>
+</div>
+
 <!-- APP -->
 <div class="screen" id="screen-app">
   <div class="app-header">
@@ -294,10 +330,19 @@ input,select,button{font-family:'DM Sans',sans-serif;}
       <button class="type-pill expense" id="pill-expense" onclick="setTxType('expense')">↓ Expense</button>
     </div>
     <div class="amount-row">
-      <span class="amount-sym">ETB</span>
+      <span class="amount-sym" id="amtSymLabel">ETB</span>
       <input class="amount-in" id="amtIn" type="number" inputmode="decimal" placeholder="0.00"/>
     </div>
     <div class="form-field"><input type="text" id="descIn" placeholder="Description (optional)" maxlength="50"/></div>
+    <div class="form-field" id="currencySelectWrap" style="display:none;">
+      <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">Currency of this transaction</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div class="source-select-wrap" style="flex:1;">
+          <select id="txCurrencySelect" onchange="onTxCurrencyChange()"></select>
+        </div>
+        <div id="rateDisplay" style="font-size:11px;color:var(--text3);white-space:nowrap;min-width:80px;text-align:right;"></div>
+      </div>
+    </div>
     <div id="income-fields">
       <div class="form-field source-select-wrap">
         <select id="sourceSelect" onchange="onSourceChange()">
@@ -485,6 +530,7 @@ auth.onAuthStateChanged(async (fbUser)=>{
     await loadUserData();
     renderSubGrid(SUBS);
     renderSourceSelect();
+    updateCurrencyDisplay();
     updateAppHeader();
     updateUI();
     showScreen('app');
@@ -497,7 +543,12 @@ auth.onAuthStateChanged(async (fbUser)=>{
 async function loadUserData(){
   try {
     const pd = await db.collection('users').doc(currentUser.uid).get();
-    if(pd.exists) userProfile=pd.data();
+    if(pd.exists){
+      userProfile=pd.data();
+      if(userProfile.currency){ userCurrency=userProfile.currency; }
+      if(userProfile.currencySymbol){ userCurrencySymbol=userProfile.currencySymbol; }
+    }
+    await fetchExchangeRates();
     const ss = await db.collection('users').doc(currentUser.uid).collection('sources').get();
     sources = ss.docs.map(d=>({id:d.id,...d.data()}));
     const ts = await db.collection('users').doc(currentUser.uid).collection('transactions').orderBy('createdAt','desc').get();
@@ -552,12 +603,11 @@ async function doSignup(){
   try {
     skipAuthRedirect=true;
     const cred=await auth.createUserWithEmailAndPassword(email,pass);
-    userProfile={name,email,phone,photo:photoBase64};
-    await db.collection('users').doc(cred.user.uid).set(userProfile);
     currentUser=cred.user;
+    userProfile={name,email,phone,photo:photoBase64};
+    await db.collection('users').doc(currentUser.uid).set(userProfile);
     sources=[]; txs=[];
-    showScreen('onboard');
-    renderSourceList();
+    showLocationPicker();
     btn.disabled=false; btn.textContent='CREATE ACCOUNT';
   } catch(e){
     skipAuthRedirect=false;
@@ -597,16 +647,20 @@ async function saveSource(){
   const employer=document.getElementById('src-employer').value.trim();
   if(!name){showToast('Enter a source name');return;}
   const src={name,type:type||'Other',employer};
-  if(currentUser){
-    const ref=await db.collection('users').doc(currentUser.uid).collection('sources').add(src);
-    src.id=ref.id;
-  }
-  sources.push(src);
-  closeOverlay('overlay-source');
-  renderSourceList(); renderSourceSelect();
+  try {
+    if(currentUser){
+      const ref=await db.collection('users').doc(currentUser.uid).collection('sources').add(src);
+      src.id=ref.id;
+    }
+    sources.push(src);
+    closeOverlay('overlay-source');
+    renderSourceList(); renderSourceSelect();
+    showToast('Source added');
+  } catch(e){ showToast('Error: '+e.message); console.error(e); }
 }
 
 async function finishOnboard(){
+  updateCurrencyDisplay();
   updateAppHeader(); renderSourceSelect(); renderSubGrid(SUBS); updateUI();
   showScreen('app');
 }
@@ -730,9 +784,13 @@ function confirmSub(){
 
 // ADD / EDIT TRANSACTION
 async function addTx(){
-  const amt=parseFloat(document.getElementById('amtIn').value);
+  const rawAmt=parseFloat(document.getElementById('amtIn').value);
   const desc=document.getElementById('descIn').value.trim();
-  if(!amt||amt<=0){showToast('Enter a valid amount');return;}
+  if(!rawAmt||rawAmt<=0){showToast('Enter a valid amount');return;}
+  const txCurrency = document.getElementById('txCurrencySelect') ? document.getElementById('txCurrencySelect').value : userCurrency;
+  const amt = txCurrency !== 'ETB' ? convertToETB(rawAmt, txCurrency) : rawAmt;
+  const originalAmt = txCurrency !== 'ETB' ? rawAmt : null;
+  const originalCurrency = txCurrency !== 'ETB' ? txCurrency : null;
   let category='',detail='';
   if(currentTxType==='income'){
     const si=document.getElementById('sourceSelect').value;
@@ -761,6 +819,7 @@ async function addTx(){
     } else {
       // NEW
       const tx={type:currentTxType,amt,desc:desc||category,category,detail,
+        originalAmt, originalCurrency,
         date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),createdAt:Date.now()};
       if(currentUser){
         const ref=await db.collection('users').doc(currentUser.uid).collection('transactions').add(tx);
@@ -864,6 +923,298 @@ function updateUI(){
         <div class="cat-track"><div class="cat-fill" style="width:${(v/maxV*100).toFixed(1)}%"></div></div>
       </div>`).join('')
     :'<div class="empty-msg"><p>No expense data yet.</p></div>';
+}
+
+
+// ═══════════════════════════════════════════
+// LOCATION & CURRENCY DATA
+// ═══════════════════════════════════════════
+const PLANETS = [
+  {name:'Earth', icon:'🌍'},
+  {name:'Other', icon:'🪐'},
+];
+
+const CONTINENTS = {
+  Earth: [
+    {name:'Africa', icon:'🌍'},
+    {name:'Asia', icon:'🌏'},
+    {name:'Europe', icon:'🌎'},
+    {name:'North America', icon:'🗽'},
+    {name:'South America', icon:'🌿'},
+    {name:'Oceania', icon:'🦘'},
+    {name:'Antarctica', icon:'🧊'},
+  ]
+};
+
+const COUNTRIES = {
+  Africa: [
+    {name:'Ethiopia',flag:'🇪🇹',currency:'ETB',symbol:'Br'},
+    {name:'Nigeria',flag:'🇳🇬',currency:'NGN',symbol:'₦'},
+    {name:'Kenya',flag:'🇰🇪',currency:'KES',symbol:'KSh'},
+    {name:'South Africa',flag:'🇿🇦',currency:'ZAR',symbol:'R'},
+    {name:'Egypt',flag:'🇪🇬',currency:'EGP',symbol:'E£'},
+    {name:'Ghana',flag:'🇬🇭',currency:'GHS',symbol:'₵'},
+    {name:'Tanzania',flag:'🇹🇿',currency:'TZS',symbol:'TSh'},
+    {name:'Uganda',flag:'🇺🇬',currency:'UGX',symbol:'USh'},
+    {name:'Rwanda',flag:'🇷🇼',currency:'RWF',symbol:'Fr'},
+    {name:'Morocco',flag:'🇲🇦',currency:'MAD',symbol:'د.م.'},
+    {name:'Senegal',flag:'🇸🇳',currency:'XOF',symbol:'Fr'},
+    {name:'Ivory Coast',flag:'🇨🇮',currency:'XOF',symbol:'Fr'},
+    {name:'Cameroon',flag:'🇨🇲',currency:'XAF',symbol:'Fr'},
+    {name:'Angola',flag:'🇦🇴',currency:'AOA',symbol:'Kz'},
+    {name:'Mozambique',flag:'🇲🇿',currency:'MZN',symbol:'MT'},
+    {name:'Zambia',flag:'🇿🇲',currency:'ZMW',symbol:'ZK'},
+    {name:'Zimbabwe',flag:'🇿🇼',currency:'ZWL',symbol:'Z$'},
+    {name:'Sudan',flag:'🇸🇩',currency:'SDG',symbol:'ج.س.'},
+    {name:'Somalia',flag:'🇸🇴',currency:'SOS',symbol:'Sh'},
+    {name:'Djibouti',flag:'🇩🇯',currency:'DJF',symbol:'Fr'},
+    {name:'Eritrea',flag:'🇪🇷',currency:'ERN',symbol:'Nfk'},
+    {name:'Other Africa',flag:'🌍',currency:'USD',symbol:'$'},
+  ],
+  Asia: [
+    {name:'United Arab Emirates',flag:'🇦🇪',currency:'AED',symbol:'د.إ'},
+    {name:'Saudi Arabia',flag:'🇸🇦',currency:'SAR',symbol:'﷼'},
+    {name:'China',flag:'🇨🇳',currency:'CNY',symbol:'¥'},
+    {name:'Japan',flag:'🇯🇵',currency:'JPY',symbol:'¥'},
+    {name:'India',flag:'🇮🇳',currency:'INR',symbol:'₹'},
+    {name:'South Korea',flag:'🇰🇷',currency:'KRW',symbol:'₩'},
+    {name:'Qatar',flag:'🇶🇦',currency:'QAR',symbol:'﷼'},
+    {name:'Kuwait',flag:'🇰🇼',currency:'KWD',symbol:'د.ك'},
+    {name:'Bahrain',flag:'🇧🇭',currency:'BHD',symbol:'.د.ب'},
+    {name:'Oman',flag:'🇴🇲',currency:'OMR',symbol:'﷼'},
+    {name:'Turkey',flag:'🇹🇷',currency:'TRY',symbol:'₺'},
+    {name:'Israel',flag:'🇮🇱',currency:'ILS',symbol:'₪'},
+    {name:'Singapore',flag:'🇸🇬',currency:'SGD',symbol:'S$'},
+    {name:'Malaysia',flag:'🇲🇾',currency:'MYR',symbol:'RM'},
+    {name:'Thailand',flag:'🇹🇭',currency:'THB',symbol:'฿'},
+    {name:'Indonesia',flag:'🇮🇩',currency:'IDR',symbol:'Rp'},
+    {name:'Pakistan',flag:'🇵🇰',currency:'PKR',symbol:'₨'},
+    {name:'Bangladesh',flag:'🇧🇩',currency:'BDT',symbol:'৳'},
+    {name:'Other Asia',flag:'🌏',currency:'USD',symbol:'$'},
+  ],
+  Europe: [
+    {name:'United Kingdom',flag:'🇬🇧',currency:'GBP',symbol:'£'},
+    {name:'Germany',flag:'🇩🇪',currency:'EUR',symbol:'€'},
+    {name:'France',flag:'🇫🇷',currency:'EUR',symbol:'€'},
+    {name:'Italy',flag:'🇮🇹',currency:'EUR',symbol:'€'},
+    {name:'Spain',flag:'🇪🇸',currency:'EUR',symbol:'€'},
+    {name:'Netherlands',flag:'🇳🇱',currency:'EUR',symbol:'€'},
+    {name:'Sweden',flag:'🇸🇪',currency:'SEK',symbol:'kr'},
+    {name:'Norway',flag:'🇳🇴',currency:'NOK',symbol:'kr'},
+    {name:'Denmark',flag:'🇩🇰',currency:'DKK',symbol:'kr'},
+    {name:'Switzerland',flag:'🇨🇭',currency:'CHF',symbol:'Fr'},
+    {name:'Poland',flag:'🇵🇱',currency:'PLN',symbol:'zł'},
+    {name:'Russia',flag:'🇷🇺',currency:'RUB',symbol:'₽'},
+    {name:'Other Europe',flag:'🌎',currency:'EUR',symbol:'€'},
+  ],
+  'North America': [
+    {name:'United States',flag:'🇺🇸',currency:'USD',symbol:'$'},
+    {name:'Canada',flag:'🇨🇦',currency:'CAD',symbol:'C$'},
+    {name:'Mexico',flag:'🇲🇽',currency:'MXN',symbol:'$'},
+    {name:'Other N. America',flag:'🗽',currency:'USD',symbol:'$'},
+  ],
+  'South America': [
+    {name:'Brazil',flag:'🇧🇷',currency:'BRL',symbol:'R$'},
+    {name:'Argentina',flag:'🇦🇷',currency:'ARS',symbol:'$'},
+    {name:'Colombia',flag:'🇨🇴',currency:'COP',symbol:'$'},
+    {name:'Chile',flag:'🇨🇱',currency:'CLP',symbol:'$'},
+    {name:'Peru',flag:'🇵🇪',currency:'PEN',symbol:'S/'},
+    {name:'Other S. America',flag:'🌿',currency:'USD',symbol:'$'},
+  ],
+  Oceania: [
+    {name:'Australia',flag:'🇦🇺',currency:'AUD',symbol:'A$'},
+    {name:'New Zealand',flag:'🇳🇿',currency:'NZD',symbol:'NZ$'},
+    {name:'Other Oceania',flag:'🦘',currency:'AUD',symbol:'A$'},
+  ],
+  Antarctica: [
+    {name:'Research Station',flag:'🧊',currency:'USD',symbol:'$'},
+  ],
+};
+
+// Currencies supported by ethioblackmarket API
+const EBM_CURRENCIES = ['USD','EUR','GBP','SAR','AED','CHF','CAD','AUD','CNY','KWD','QAR','OMR'];
+
+let userCountry = null;
+let userCurrency = 'ETB';
+let userCurrencySymbol = 'Br';
+let exchangeRates = {}; // {USD: 142.5, EUR: 155.2, ...} — all to ETB
+let selectedLocPlanet = null;
+let selectedLocContinent = null;
+let allCountriesForContinent = [];
+
+// ═══════════════════════════════════════════
+// LOCATION PICKER
+// ═══════════════════════════════════════════
+function showLocationPicker(){
+  renderPlanetGrid();
+  showScreen('location');
+}
+
+function renderPlanetGrid(){
+  document.getElementById('locTitle').textContent = 'Where are you from?';
+  document.getElementById('locSub').textContent = 'Let\'s set up your currency.';
+  document.getElementById('locStep-planet').style.display='block';
+  document.getElementById('locStep-continent').style.display='none';
+  document.getElementById('locStep-country').style.display='none';
+  document.getElementById('locPlanetGrid').innerHTML = PLANETS.map(p=>`
+    <div class="loc-tile" onclick="selectPlanet('${p.name}')">
+      <div class="loc-tile-icon">${p.icon}</div>
+      <div class="loc-tile-name">${p.name}</div>
+    </div>`).join('');
+}
+
+function selectPlanet(name){
+  if(name==='Other'){
+    // Just use USD for other planets
+    saveLocationAndContinue({name:'Other',flag:'🪐',currency:'USD',symbol:'$'});
+    return;
+  }
+  selectedLocPlanet=name;
+  document.getElementById('locStep-planet').style.display='none';
+  document.getElementById('locStep-continent').style.display='block';
+  document.getElementById('locTitle').textContent = 'Which continent?';
+  const continents = CONTINENTS[name]||[];
+  document.getElementById('locContinentGrid').innerHTML = continents.map(c=>`
+    <div class="loc-tile" onclick="selectContinent('${c.name}')">
+      <div class="loc-tile-icon">${c.icon}</div>
+      <div class="loc-tile-name">${c.name}</div>
+    </div>`).join('');
+}
+
+function selectContinent(name){
+  selectedLocContinent=name;
+  allCountriesForContinent = COUNTRIES[name]||[];
+  document.getElementById('locStep-continent').style.display='none';
+  document.getElementById('locStep-country').style.display='block';
+  document.getElementById('locTitle').textContent = 'Which country?';
+  document.getElementById('locCountrySearch').value='';
+  renderCountryList(allCountriesForContinent);
+}
+
+function renderCountryList(list){
+  document.getElementById('locCountryList').innerHTML = list.map(c=>`
+    <div class="loc-country-item" onclick="selectCountry('${c.name}')">
+      <div class="loc-country-flag">${c.flag}</div>
+      <div>
+        <div class="loc-country-name">${c.name}</div>
+        <div class="loc-country-currency">${c.currency} — ${c.symbol}</div>
+      </div>
+    </div>`).join('');
+}
+
+function filterCountries(){
+  const q = document.getElementById('locCountrySearch').value.toLowerCase();
+  renderCountryList(q ? allCountriesForContinent.filter(c=>c.name.toLowerCase().includes(q)) : allCountriesForContinent);
+}
+
+function locBack(to){
+  if(to==='planet'){
+    document.getElementById('locStep-continent').style.display='none';
+    document.getElementById('locStep-planet').style.display='block';
+    document.getElementById('locTitle').textContent='Where are you from?';
+  } else if(to==='continent'){
+    document.getElementById('locStep-country').style.display='none';
+    document.getElementById('locStep-continent').style.display='block';
+    document.getElementById('locTitle').textContent='Which continent?';
+  }
+}
+
+function selectCountry(name){
+  const allCountries = Object.values(COUNTRIES).flat();
+  const country = allCountries.find(c=>c.name===name);
+  if(country) saveLocationAndContinue(country);
+}
+
+async function saveLocationAndContinue(country){
+  userCountry = country;
+  userCurrency = country.currency;
+  userCurrencySymbol = country.symbol;
+  if(currentUser){
+    await db.collection('users').doc(currentUser.uid).update({
+      country: country.name, currency: country.currency, currencySymbol: country.symbol
+    }).catch(()=>{});
+  }
+  // Fetch exchange rates
+  await fetchExchangeRates();
+  // Update all currency displays
+  updateCurrencyDisplay();
+  showScreen('onboard');
+  renderSourceList();
+}
+
+// ═══════════════════════════════════════════
+// EXCHANGE RATES
+// ═══════════════════════════════════════════
+async function fetchExchangeRates(){
+  try {
+    const res = await fetch('https://ethioblackmarket.com/api/latest-prices?period=daily');
+    const data = await res.json();
+    // data is array of {currency, price, ...} where price = X ETB per 1 unit of currency
+    if(Array.isArray(data)){
+      data.forEach(item=>{
+        if(item.currency && item.price) exchangeRates[item.currency] = parseFloat(item.price);
+      });
+    } else if(data && typeof data === 'object'){
+      // might be {usdCurrent: 142, eurCurrent: 155, ...}
+      if(data.usdCurrent) exchangeRates['USD'] = parseFloat(data.usdCurrent);
+      if(data.eurCurrent) exchangeRates['EUR'] = parseFloat(data.eurCurrent);
+      if(data.gbpCurrent) exchangeRates['GBP'] = parseFloat(data.gbpCurrent);
+      if(data.sarCurrent) exchangeRates['SAR'] = parseFloat(data.sarCurrent);
+      if(data.aedCurrent) exchangeRates['AED'] = parseFloat(data.aedCurrent);
+      if(data.cadCurrent) exchangeRates['CAD'] = parseFloat(data.cadCurrent);
+      if(data.audCurrent) exchangeRates['AUD'] = parseFloat(data.audCurrent);
+      if(data.chfCurrent) exchangeRates['CHF'] = parseFloat(data.chfCurrent);
+      if(data.cnyCurrent) exchangeRates['CNY'] = parseFloat(data.cnyCurrent);
+      if(data.kwdCurrent) exchangeRates['KWD'] = parseFloat(data.kwdCurrent);
+      if(data.qarCurrent) exchangeRates['QAR'] = parseFloat(data.qarCurrent);
+      if(data.omrCurrent) exchangeRates['OMR'] = parseFloat(data.omrCurrent);
+    }
+    console.log('Exchange rates loaded:', exchangeRates);
+  } catch(e){
+    console.error('Rate fetch failed:', e);
+  }
+}
+
+function convertToETB(amount, fromCurrency){
+  if(fromCurrency === 'ETB') return amount;
+  const rate = exchangeRates[fromCurrency];
+  if(!rate){ showToast('Rate unavailable for '+fromCurrency); return amount; }
+  return amount * rate;
+}
+
+function updateCurrencyDisplay(){
+  // Update balance section label
+  const sym = userCurrency === 'ETB' ? 'ETB' : userCurrency;
+  document.getElementById('amtSymLabel').textContent = sym;
+  // Rebuild currency select in tx form
+  renderTxCurrencySelect();
+}
+
+function renderTxCurrencySelect(){
+  const sel = document.getElementById('txCurrencySelect');
+  const homeCurrency = userCurrency;
+  // Always include home currency + all EBM currencies
+  const options = [homeCurrency, ...EBM_CURRENCIES.filter(c=>c!==homeCurrency)];
+  sel.innerHTML = options.map(c=>`<option value="${c}">${c}</option>`).join('');
+  sel.value = homeCurrency;
+  document.getElementById('currencySelectWrap').style.display = 'block';
+  updateRateDisplay(homeCurrency);
+}
+
+function onTxCurrencyChange(){
+  const cur = document.getElementById('txCurrencySelect').value;
+  updateRateDisplay(cur);
+}
+
+function updateRateDisplay(currency){
+  const el = document.getElementById('rateDisplay');
+  if(currency === 'ETB'){
+    el.textContent = '';
+    return;
+  }
+  const rate = exchangeRates[currency];
+  if(rate) el.textContent = `1 ${currency} = ${rate.toFixed(2)} ETB`;
+  else el.textContent = 'rate loading...';
 }
 
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
