@@ -478,9 +478,16 @@ function showScreen(id){
 }
 
 // ── Auth state listener
+// openOverlay defined early so all functions can use it
+function openOverlay(id){document.getElementById(id).classList.add('open');}
+function closeOverlay(id,e){if(e&&e.target!==document.getElementById(id))return;document.getElementById(id).classList.remove('open');}
+window.openOverlay=openOverlay; window.closeOverlay=closeOverlay;
+
+let skipAuthRedirect = false;
 onAuthStateChanged(auth, async (fbUser) => {
   if(fbUser){
     currentUser = fbUser;
+    if(skipAuthRedirect){ skipAuthRedirect=false; return; }
     await loadUserData();
     renderSubGrid(SUBS);
     renderSourceSelect();
@@ -553,6 +560,7 @@ window.doSignup = async ()=>{
   if(pass.length<6){err.textContent='Password must be at least 6 characters';return;}
   btn.disabled=true; btn.textContent='CREATING...';
   try {
+    skipAuthRedirect = true;
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     userProfile = {name, email, phone, photo: photoBase64};
     await setDoc(doc(db,'users',cred.user.uid), userProfile);
@@ -845,10 +853,7 @@ function updateUI(){
     :`<div class="empty-msg"><p>No expense data yet.</p></div>`;
 }
 
-// ── OVERLAY
-function openOverlay(id){document.getElementById(id).classList.add('open');}
-function closeOverlay(id,e){if(e&&e.target!==document.getElementById(id))return;document.getElementById(id).classList.remove('open');}
-window.openOverlay=openOverlay; window.closeOverlay=closeOverlay;
+
 
 // ── TOAST
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
