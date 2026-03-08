@@ -147,6 +147,11 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
 .form-field select option{background:var(--bg2);}
 .source-select-wrap{position:relative;}
 .source-select-wrap::after{content:'›';position:absolute;right:14px;top:50%;transform:translateY(-50%) rotate(90deg);color:var(--text3);pointer-events:none;}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;gap:12px;}
+.toggle-switch{width:42px;height:24px;border-radius:12px;background:var(--border);flex-shrink:0;position:relative;transition:background .2s;}
+.toggle-switch::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s;}
+.toggle-switch.on{background:var(--accent);}
+.toggle-switch.on::after{transform:translateX(18px);}
 .submit-btn{width:100%;padding:15px;background:var(--accent);border:none;border-radius:12px;font-size:13px;font-weight:600;color:var(--bg);cursor:pointer;margin-top:6px;}
 .submit-btn:disabled{opacity:.5;}
 .currency-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
@@ -434,6 +439,7 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
     <div class="onboard-sub">Add where your money comes from so you can track it accurately.</div>
     <div class="income-source-list" id="sourceList"></div>
     <button class="add-source-btn" onclick="openAddSourcePopup()"><svg class="ico ico-sm"><use href="#ic-add"/></svg> Add Income Source</button>
+    <div style="text-align:center;font-size:12px;color:var(--text3);margin-top:8px;cursor:pointer;" onclick="openTemplateManager()">Manage saved templates →</div>
     <div class="onboard-skip" onclick="finishOnboard()"><span>Skip for now →</span></div>
     <div style="flex:1;min-height:20px;"></div>
     <button class="onboard-btn" onclick="finishOnboard()">DONE — LET'S GO</button>
@@ -488,6 +494,7 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
       <div id="income-detail-hint" style="display:none;">
         <div style="font-size:11px;color:var(--text3);margin-bottom:10px;text-align:center;cursor:pointer;" onclick="openIncomeDetailPopup()">＋ Add note / pay period (optional)</div>
       </div>
+      <div style="text-align:right;font-size:11px;color:var(--text3);margin-bottom:8px;cursor:pointer;" onclick="openTemplateManager()">Manage templates →</div>
     </div>
     <div id="expense-fields" style="display:none;">
       <div class="form-field source-select-wrap">
@@ -708,10 +715,10 @@ if(window.Telegram?.WebApp){Telegram.WebApp.ready();Telegram.WebApp.expand();}
 
 // ── STATE
 let currentUser=null, userProfile=null;
-let sources=[], txs=[], wallets=[];
+let sources=[], txs=[], wallets=[], sourceTemplates=[];
 let isDark=localStorage.getItem('mizan_theme')!=='light';
 let currentTxType='income', selectedSub='', incomeDetail={period:'',note:''}, photoBase64='';
-let editingTxId=null, skipAuthRedirect=false;
+let editingTxId=null, skipAuthRedirect=false, srcRecurring=false, srcSaveTemplate=false;
 let userCurrency='ETB', userCurrencySymbol='Br', userCountry=null;
 let exchangeRates={}, rateSource=null;
 let balanceVisible=true;
@@ -876,6 +883,8 @@ async function loadUserData(){
     sources=ss.docs.map(d=>({id:d.id,...d.data()}));
     const ws=await db.collection('users').doc(currentUser.uid).collection('wallets').get();
     wallets=ws.docs.map(d=>({id:d.id,...d.data()}));
+    const tpl=await db.collection('users').doc(currentUser.uid).collection('templates').get();
+    sourceTemplates=tpl.docs.map(d=>({id:d.id,...d.data()}));
     const ts=await db.collection('users').doc(currentUser.uid).collection('transactions').orderBy('createdAt','desc').get();
     txs=ts.docs.map(d=>({firestoreId:d.id,...d.data()}));
   }catch(e){console.error(e);}
@@ -1111,19 +1120,69 @@ async function removeSource(i){
   sources.splice(i,1);renderSourceList();renderSourceSelect();
 }
 function openAddSourcePopup(){
-  document.getElementById('src-name').value='';document.getElementById('src-type').value='';document.getElementById('src-employer').value='';
+  document.getElementById('src-name').value='';
+  document.getElementById('src-type').value='';
+  document.getElementById('src-employer').value='';
+  srcRecurring=false;srcSaveTemplate=false;
+  document.getElementById('recurringToggle').classList.remove('on');
+  document.getElementById('saveTemplateToggle').classList.remove('on');
+  document.getElementById('saveTemplateWrap').style.display='none';
   openOverlay('overlay-source');
+}
+function toggleRecurring(){
+  srcRecurring=!srcRecurring;
+  document.getElementById('recurringToggle').classList.toggle('on',srcRecurring);
+  document.getElementById('saveTemplateWrap').style.display=srcRecurring?'block':'none';
+  if(!srcRecurring){srcSaveTemplate=false;document.getElementById('saveTemplateToggle').classList.remove('on');}
+}
+function toggleSaveTemplate(){
+  srcSaveTemplate=!srcSaveTemplate;
+  document.getElementById('saveTemplateToggle').classList.toggle('on',srcSaveTemplate);
 }
 async function saveSource(){
   const name=document.getElementById('src-name').value.trim();
   const type=document.getElementById('src-type').value;
   const employer=document.getElementById('src-employer').value.trim();
   if(!name){showToast('Enter a source name');return;}
-  const src={name,type:type||'Other',employer};
+  const src={name,type:type||'Other',employer,recurring:srcRecurring};
   try{
     if(currentUser){const ref=await db.collection('users').doc(currentUser.uid).collection('sources').add(src);src.id=ref.id;}
-    sources.push(src);closeOverlay('overlay-source');renderSourceList();renderSourceSelect();showToast('Source added');
+    sources.push(src);
+    // Save as template if requested
+    if(srcRecurring&&srcSaveTemplate){
+      const tpl={name,type:type||'Other',employer};
+      if(currentUser){const ref=await db.collection('users').doc(currentUser.uid).collection('templates').add(tpl);tpl.id=ref.id;}
+      sourceTemplates.push(tpl);
+      showToast('Source added & saved as template ✓');
+    } else {
+      showToast('Source added ✓');
+    }
+    closeOverlay('overlay-source');renderSourceList();renderSourceSelect();
   }catch(e){showToast('Error: '+e.message);console.error(e);}
+}
+function openTemplateManager(){
+  renderTemplateManagerList();
+  openOverlay('overlay-templates');
+}
+function renderTemplateManagerList(){
+  const el=document.getElementById('templateManagerList');
+  if(!sourceTemplates.length){
+    el.innerHTML='<div style="text-align:center;font-size:12px;color:var(--text3);padding:20px;">No templates saved yet.<br/>Add a recurring income source and save it as a template.</div>';
+    return;
+  }
+  el.innerHTML=sourceTemplates.map((t,i)=>`
+    <div class="income-source-item">
+      <div><div class="income-source-name">${t.name}</div><div class="income-source-type">${t.type}${t.employer?' · '+t.employer:''}</div></div>
+      <button class="income-source-del" onclick="deleteTemplate(${i})"><svg class="ico ico-sm"><use href="#ic-trash"/></svg></button>
+    </div>`).join('');
+}
+async function deleteTemplate(i){
+  const t=sourceTemplates[i];
+  if(t.id&&currentUser)await db.collection('users').doc(currentUser.uid).collection('templates').doc(t.id).delete().catch(()=>{});
+  sourceTemplates.splice(i,1);
+  renderTemplateManagerList();
+  renderSourceSelect();
+  showToast('Template deleted');
 }
 async function finishOnboard(){
   renderTxCurrencySelect();renderWalletSelect();renderSourceSelect();renderSubGrid(SUBS);updateAppHeader();renderWallets();updateUI();
@@ -1319,13 +1378,22 @@ function setTxType(type){
 function renderSourceSelect(){
   const sel=document.getElementById('sourceSelect');
   sel.innerHTML='<option value="">— Select income source —</option>';
-  sources.forEach((s,i)=>sel.innerHTML+=`<option value="${i}">${s.name} (${s.type})</option>`);
+  if(sourceTemplates.length){
+    sel.innerHTML+='<optgroup label="── Templates ──">';
+    sourceTemplates.forEach((t,i)=>sel.innerHTML+=`<option value="tpl-${i}">⟳ ${t.name} (${t.type})</option>`);
+    sel.innerHTML+='</optgroup>';
+  }
+  if(sources.length){
+    sel.innerHTML+=sourceTemplates.length?'<optgroup label="── Other ──">':'';
+    sources.forEach((s,i)=>sel.innerHTML+=`<option value="${i}">${s.name} (${s.type})</option>`);
+    if(sourceTemplates.length)sel.innerHTML+='</optgroup>';
+  }
   sel.innerHTML+='<option value="new">＋ Add new source…</option>';
 }
 
 function onSourceChange(){
   const v=document.getElementById('sourceSelect').value;
-  if(v==='new'){document.getElementById('src-name').value='';document.getElementById('src-type').value='';document.getElementById('src-employer').value='';openOverlay('overlay-source');document.getElementById('sourceSelect').value='';return;}
+  if(v==='new'){openAddSourcePopup();document.getElementById('sourceSelect').value='';return;}
   document.getElementById('income-detail-hint').style.display=v?'block':'none';
 }
 
