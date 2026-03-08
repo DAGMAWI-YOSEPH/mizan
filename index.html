@@ -600,6 +600,10 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
       <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-news"/></svg></div><div><div class="settings-row-label">Finance News</div><div class="settings-row-sub">Local & global insights</div></div></div>
       <div class="settings-row-arrow"><svg class="ico ico-sm"><use href="#ic-chevron-r"/></svg></div>
     </div>
+    <div class="settings-row" onclick="closeSettings();openSourcesManager()">
+      <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-work"/></svg></div><div><div class="settings-row-label">Manage Sources</div><div class="settings-row-sub">Income sources & templates</div></div></div>
+      <div class="settings-row-arrow"><svg class="ico ico-sm"><use href="#ic-chevron-r"/></svg></div>
+    </div>
     <div class="settings-row" onclick="openWalletManager()">
       <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-wallet"/></svg></div><div><div class="settings-row-label">Manage Wallets</div><div class="settings-row-sub">Add or remove wallets</div></div></div>
       <div class="settings-row-arrow"><svg class="ico ico-sm"><use href="#ic-chevron-r"/></svg></div>
@@ -624,12 +628,28 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
 <div class="overlay" id="overlay-source" onclick="closeOverlay('overlay-source',event)">
   <div class="popup">
     <div class="popup-handle"></div>
-    <button class="popup-close" onclick="closeOverlay('overlay-source')">✕</button>
+    <button class="popup-close" onclick="closeOverlay('overlay-source')"><svg class="ico ico-sm"><use href="#ic-close"/></svg></button>
     <div class="popup-title">Income Source</div>
     <div class="source-form">
       <input id="src-name" placeholder="Source name (e.g. Main Job)" type="text"/>
       <select id="src-type"><option value="">— Type —</option><option>Salary</option><option>Freelance</option><option>Business</option><option>Investment</option><option>Rental</option><option>Gift / Transfer</option><option>Side Job</option><option>Other</option></select>
       <input id="src-employer" placeholder="Employer / Client (optional)" type="text"/>
+      <div class="toggle-row" onclick="toggleRecurring()">
+        <div>
+          <div style="font-size:13px;font-weight:500;">Recurring income</div>
+          <div style="font-size:11px;color:var(--text3);">Repeats monthly (salary, rent, etc.)</div>
+        </div>
+        <div class="toggle-switch" id="recurringToggle"></div>
+      </div>
+      <div id="saveTemplateWrap" style="display:none;">
+        <div class="toggle-row" onclick="toggleSaveTemplate()">
+          <div>
+            <div style="font-size:13px;font-weight:500;">Save as template</div>
+            <div style="font-size:11px;color:var(--text3);">Quick-select this source next time</div>
+          </div>
+          <div class="toggle-switch" id="saveTemplateToggle"></div>
+        </div>
+      </div>
       <button class="popup-save-btn" onclick="saveSource()">ADD SOURCE</button>
     </div>
   </div>
@@ -1157,7 +1177,7 @@ async function saveSource(){
     } else {
       showToast('Source added ✓');
     }
-    closeOverlay('overlay-source');renderSourceList();renderSourceSelect();
+    closeOverlay('overlay-source');renderSourceList();renderSourceSelect();renderSourcesManagerList();renderTemplateManagerList();
   }catch(e){showToast('Error: '+e.message);console.error(e);}
 }
 function openTemplateManager(){
