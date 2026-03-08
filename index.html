@@ -242,9 +242,10 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
 .ai-quick-btn:hover{border-color:var(--accent);color:var(--accent);}
 
 /* SETTINGS / PROFILE OVERLAY */
-.settings-overlay{position:fixed;inset:0;background:var(--overlay);z-index:200;display:none;align-items:flex-end;}
+.settings-overlay{position:fixed;inset:0;background:var(--overlay);z-index:200;display:none;align-items:flex-end;justify-content:center;}
 .settings-overlay.open{display:flex;}
-.settings-sheet{background:var(--bg);border-radius:24px 24px 0 0;width:100%;max-height:90vh;overflow-y:auto;padding:20px;border-top:1px solid var(--border);}
+.settings-sheet{background:var(--bg);border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:20px;border-top:1px solid var(--border);}
+@media(min-width:600px){.settings-overlay{align-items:center;}.settings-sheet{border-radius:20px;border:1px solid var(--border);max-height:85vh;}}
 .settings-handle{width:36px;height:3px;background:var(--border);border-radius:3px;margin:0 auto 20px;}
 .settings-profile{display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--border);}
 .settings-avatar{width:60px;height:60px;border-radius:50%;background:var(--bg2);border:2px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text2);flex-shrink:0;}
@@ -262,9 +263,10 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
 .settings-logout{width:100%;padding:14px;margin-top:16px;background:rgba(200,131,122,.1);border:1.5px solid var(--expense);border-radius:12px;font-size:13px;font-weight:600;color:var(--expense);cursor:pointer;}
 
 /* GENERIC POPUP */
-.overlay{position:fixed;inset:0;background:var(--overlay);z-index:100;display:none;align-items:flex-end;}
+.overlay{position:fixed;inset:0;background:var(--overlay);z-index:100;display:none;align-items:flex-end;justify-content:center;}
 .overlay.open{display:flex;}
-.popup{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-height:82vh;overflow-y:auto;padding:20px;border-top:1px solid var(--border);position:relative;}
+.popup{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:82vh;overflow-y:auto;padding:20px;border-top:1px solid var(--border);position:relative;}
+@media(min-width:600px){.overlay{align-items:center;}.popup{border-radius:16px;border:1px solid var(--border);max-height:80vh;}}
 .popup-handle{width:36px;height:3px;background:var(--border);border-radius:3px;margin:0 auto 18px;}
 .popup-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:16px;}
 .popup-close{position:absolute;right:20px;top:20px;background:var(--bg2);border:none;width:30px;height:30px;border-radius:50%;cursor:pointer;color:var(--text2);font-size:16px;}
@@ -474,7 +476,7 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
     </div>
     <!-- Currency selector -->
     <div class="currency-row">
-      <div class="source-select-wrap" style="flex:1;">
+      <div class="form-field source-select-wrap" style="flex:1;margin-bottom:0;">
         <select id="txCurrencySelect" onchange="onTxCurrencyChange()"></select>
       </div>
       <div class="rate-badge" id="rateDisplay">—</div>
