@@ -322,8 +322,6 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
   <symbol id="ic-stats" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
   <!-- news/newspaper -->
   <symbol id="ic-news" viewBox="0 0 24 24"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M2 15h8M2 19h8M2 11h4"/></symbol>
-  <!-- ai/sparkle -->
-  <symbol id="ic-ai" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></symbol>
   <!-- key/password -->
   <symbol id="ic-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3"/></symbol>
   <!-- email -->
@@ -459,18 +457,6 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
     <div class="wallet-dots" id="walletDots"></div>
   </div>
 
-  <!-- AI QUICK ACCESS -->
-  <div style="padding:0 20px 14px;">
-    <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 14px;cursor:pointer;" onclick="switchTab('ai')">
-      <div style="line-height:1;color:var(--accent);"><svg class="ico ico-md"><use href="#ic-ai"/></svg></div>
-      <div style="flex:1;">
-        <div style="font-size:12px;font-weight:600;">Mizān Helper</div>
-        <div style="font-size:11px;color:var(--text3);">Get AI advice on your spending</div>
-      </div>
-      <div style="color:var(--text3);font-size:14px;">›</div>
-    </div>
-  </div>
-
   <!-- TAB CONTENTS -->
   <div class="tab-content active" id="tab-add">
     <div class="type-row">
@@ -548,27 +534,7 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
     <div style="height:20px;"></div>
   </div>
 
-  <div class="tab-content" id="tab-ai">
-    <div class="ai-hero">
-      <div class="ai-hero-title"><svg class="ico ico-md"><use href="#ic-ai"/></svg> Mizān Helper</div>
-      <div class="ai-hero-sub">AI-powered financial advice based on your actual spending patterns.</div>
-    </div>
-    <div class="ai-quick-btns">
-      <button class="ai-quick-btn" onclick="aiQuick('How am I doing this month?')">This month summary</button>
-      <button class="ai-quick-btn" onclick="aiQuick('Where am I overspending?')">Where I overspend</button>
-      <button class="ai-quick-btn" onclick="aiQuick('How can I save more?')">Save more tips</button>
-      <button class="ai-quick-btn" onclick="aiQuick('Give me a budget plan till next month')">Budget plan</button>
-    </div>
-    <div class="ai-chat" id="aiChat"></div>
-    <div class="ai-input-row">
-      <input class="ai-input" id="aiInput" placeholder="Ask anything about your finances..." onkeydown="if(event.key==='Enter')sendAiMsg()"/>
-      <button class="ai-send" id="aiSendBtn" onclick="sendAiMsg()"><svg class="ico ico-sm"><use href="#ic-send"/></svg></button>
-    </div>
-    <div style="height:20px;"></div>
-  </div>
-</div>
-
-<!-- BOTTOM NAV -->
+  <!-- BOTTOM NAV -->
 <div class="bottom-nav" id="bottomNav" style="display:none;">
   <div class="bottom-nav-inner">
     <button class="nav-btn active" id="nav-add" onclick="switchTab('add')">
@@ -587,10 +553,7 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
       <svg viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2z"/><path d="M16 2v4"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>
       <span>News</span>
     </button>
-    <button class="nav-btn" id="nav-ai" onclick="switchTab('ai')">
-      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-      <span>AI</span>
-    </button>
+
   </div>
 </div>
 
@@ -624,9 +587,7 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
     </div>
     <div style="height:12px;"></div>
     <div class="settings-section-title">App</div>
-    <div class="settings-row" onclick="closeSettings();switchTab('ai')">
-      <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-ai"/></svg></div><div><div class="settings-row-label">Mizān Helper</div><div class="settings-row-sub">AI financial advice</div></div></div>
-      <div class="settings-row-arrow">›</div>
+          <div class="settings-row-arrow">›</div>
     </div>
     <div class="settings-row" onclick="closeSettings();switchTab('news')">
       <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-news"/></svg></div><div><div class="settings-row-label">Finance News</div><div class="settings-row-sub">Local & global insights</div></div></div>
@@ -1063,7 +1024,7 @@ function renderWallets(){
       const bal=inc-exp;
       const hidden=!balanceVisible;
       return `<div class="wallet-card combined">
-        <button class="eye-btn" onclick="toggleBalance()">${balanceVisible?'👁':'🙈'}</button>
+        <button class="eye-btn" onclick="toggleBalance()">${balanceVisible?'<svg class="ico ico-sm"><use href="#ic-eye"/></svg>':'<svg class="ico ico-sm"><use href="#ic-eye-off"/></svg>'}</button>
         <div class="wallet-card-type">ALL WALLETS</div>
         <div class="wallet-card-name"><span class="wicon"><svg class="ico ico-md"><use href="#ic-wallet"/></svg></span> Combined Balance</div>
         <div class="wallet-balance-label">NET BALANCE</div>
@@ -1080,7 +1041,7 @@ function renderWallets(){
     const wBal=wInc-wExp;
     const hidden=!balanceVisible;
     return `<div class="wallet-card">
-      <button class="eye-btn" onclick="toggleBalance()">${balanceVisible?'👁':'🙈'}</button>
+      <button class="eye-btn" onclick="toggleBalance()">${balanceVisible?'<svg class="ico ico-sm"><use href="#ic-eye"/></svg>':'<svg class="ico ico-sm"><use href="#ic-eye-off"/></svg>'}</button>
       <div class="wallet-card-type">${(WALLET_LABELS[w.type]||w.type).toUpperCase()}</div>
       <div class="wallet-card-name"><span class="wicon">${WALLET_ICONS[w.type]||'<svg class="ico ico-md"><use href="#ic-wallet"/></svg>'}</span>${w.name}</div>
       <div class="wallet-balance-label">BALANCE</div>
@@ -1658,64 +1619,8 @@ function renderNewsCard(a){
 // ══════════════════════════════════════
 // AI HELPER
 // ══════════════════════════════════════
-let aiHistory=[];
-function buildFinancialContext(){
-  const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amt,0);
-  const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amt,0);
-  const catMap={};txs.filter(t=>t.type==='expense').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.amt;});
-  const topCats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([c,v])=>`${c}: ${fmt(v)}`).join(', ');
-  return `User's financial data (currency: ${userCurrency}, country: ${userCountry?.name||'unknown'}):
-- Total income: ${fmt(inc)}
-- Total expenses: ${fmt(exp)}
-- Net balance: ${fmt(inc-exp)}
-- Savings rate: ${inc>0?((inc-exp)/inc*100).toFixed(1):0}%
-- Number of transactions: ${txs.length}
-- Top expense categories: ${topCats||'none yet'}
-- Income sources: ${sources.map(s=>s.name).join(', ')||'none added'}`;
-}
 
-async function sendAiMsg(){
-  const input=document.getElementById('aiInput');
-  const msg=input.value.trim();
-  if(!msg)return;
-  input.value='';
-  appendAiMsg(msg,'user');
-  const loadId=appendAiMsg('Analyzing your finances...','ai loading');
-  document.getElementById('aiSendBtn').disabled=true;
-  try{
-    const context=buildFinancialContext();
-    const country=(userCountry&&userCountry.name)||'Ethiopia';
-    const sysPrompt='You are Mizan Helper, a friendly personal finance advisor inside the Mizan money tracker app. User is from '+country+'. You have their real spending data. Give concise, practical, specific advice based on their actual numbers. Plain text only, no markdown formatting, no asterisks, no bullet symbols.';
-    const userContent=context+'\n\nMy question: '+msg;
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:sysPrompt,messages:[{role:'user',content:userContent}]})
-    });
-    const data=await res.json();
-    const reply=(data.content&&data.content[0]&&data.content[0].text)||'Sorry, could not get a response. Please try again.';
-    removeAiMsg(loadId);
-    appendAiMsg(reply,'ai');
-    aiHistory.push({role:'user',content:msg},{role:'assistant',content:reply});
-  }catch(e){
-    console.error('AI error:',e);
-    removeAiMsg(loadId);
-    appendAiMsg('Connection error. Please check your internet and try again.','ai');
-  }
-  document.getElementById('aiSendBtn').disabled=false;
-}
 
-let aiMsgCounter=0;
-function appendAiMsg(text,type){
-  const id='aim-'+(++aiMsgCounter);
-  const chat=document.getElementById('aiChat');
-  const div=document.createElement('div');
-  div.id=id;div.className='ai-msg '+type;div.textContent=text;
-  chat.appendChild(div);chat.scrollTop=chat.scrollHeight;
-  return id;
-}
-function removeAiMsg(id){document.getElementById(id)?.remove();}
-function aiQuick(msg){document.getElementById('aiInput').value=msg;sendAiMsg();}
 
 // ══════════════════════════════════════
 // OVERLAY
