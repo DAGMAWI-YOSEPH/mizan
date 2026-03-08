@@ -1686,9 +1686,7 @@ async function sendAiMsg(){
     const context=buildFinancialContext();
     const country=(userCountry&&userCountry.name)||'Ethiopia';
     const sysPrompt='You are Mizan Helper, a friendly personal finance advisor inside the Mizan money tracker app. User is from '+country+'. You have their real spending data. Give concise, practical, specific advice based on their actual numbers. Plain text only, no markdown formatting, no asterisks, no bullet symbols.';
-    const userContent=context+'
-
-My question: '+msg;
+    const userContent=context+'\n\nMy question: '+msg;
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
