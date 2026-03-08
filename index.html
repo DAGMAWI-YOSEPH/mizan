@@ -7,6 +7,15 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
+
+/* SVG ICON HELPERS */
+.ico{display:inline-block;vertical-align:middle;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.ico-sm{width:16px;height:16px;}
+.ico-md{width:20px;height:20px;}
+.ico-lg{width:24px;height:24px;}
+.ico-xl{width:28px;height:28px;}
+.ico.fill{fill:currentColor;stroke:none;}
+
 :root{--bg:#1a1a1a;--bg2:#232323;--bg3:#2e2e2e;--border:#3a3a3a;--text:#f0ede8;--text2:#a09a94;--text3:#6a6560;--accent:#c8b89a;--income:#8fb89a;--expense:#c8837a;--shadow:rgba(0,0,0,0.4);--overlay:rgba(0,0,0,0.7);}
 body.light{--bg:#f5f2ee;--bg2:#ede9e3;--bg3:#e4dfd8;--border:#d4cec8;--text:#1a1a1a;--text2:#6a6560;--text3:#a09a94;--accent:#7a6a58;--income:#3a7a4a;--expense:#8a3a33;--shadow:rgba(0,0,0,0.12);--overlay:rgba(0,0,0,0.5);}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -286,6 +295,72 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
 .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 18px;font-size:12px;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;z-index:500;color:var(--text);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
+
+<!-- SVG ICON SYSTEM (Flaticon-style, theme-aware) -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <!-- wallet -->
+  <symbol id="ic-wallet" viewBox="0 0 24 24"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1"/><polyline points="15 10 21 10 21 14 15 14"/><circle cx="18" cy="12" r="1"/></symbol>
+  <!-- cash/money -->
+  <symbol id="ic-cash" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></symbol>
+  <!-- bank -->
+  <symbol id="ic-bank" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v2H3z"/><path d="M5 11v7M9 11v7M15 11v7M19 11v7M2 18h20v2H2z"/></symbol>
+  <!-- mobile/phone -->
+  <symbol id="ic-mobile" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></symbol>
+  <!-- eye open -->
+  <symbol id="ic-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <!-- eye off -->
+  <symbol id="ic-eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></symbol>
+  <!-- income arrow up -->
+  <symbol id="ic-income" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></symbol>
+  <!-- expense arrow down -->
+  <symbol id="ic-expense" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></symbol>
+  <!-- add/plus circle -->
+  <symbol id="ic-add" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></symbol>
+  <!-- history/list -->
+  <symbol id="ic-history" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></symbol>
+  <!-- stats/bar chart -->
+  <symbol id="ic-stats" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+  <!-- news/newspaper -->
+  <symbol id="ic-news" viewBox="0 0 24 24"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M2 15h8M2 19h8M2 11h4"/></symbol>
+  <!-- ai/sparkle -->
+  <symbol id="ic-ai" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></symbol>
+  <!-- key/password -->
+  <symbol id="ic-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3"/></symbol>
+  <!-- email -->
+  <symbol id="ic-email" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></symbol>
+  <!-- photo/image -->
+  <symbol id="ic-photo" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></symbol>
+  <!-- settings/gear -->
+  <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <!-- person/user -->
+  <symbol id="ic-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <!-- logout -->
+  <symbol id="ic-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+  <!-- edit/pencil -->
+  <symbol id="ic-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+  <!-- delete/trash -->
+  <symbol id="ic-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></symbol>
+  <!-- globe -->
+  <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+  <!-- location/map pin -->
+  <symbol id="ic-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <!-- send -->
+  <symbol id="ic-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></symbol>
+  <!-- check -->
+  <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <!-- sun (light mode) -->
+  <symbol id="ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
+  <!-- moon (dark mode) -->
+  <symbol id="ic-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+  <!-- back arrow -->
+  <symbol id="ic-back" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+  <!-- close/x -->
+  <symbol id="ic-close" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <!-- chevron right -->
+  <symbol id="ic-chevron-r" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+  <!-- briefcase/work -->
+  <symbol id="ic-work" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="12.01"/></symbol>
+</svg>
 </head>
 <body>
 
@@ -297,7 +372,7 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
 <!-- AUTH -->
 <div class="screen no-pad" id="screen-auth">
   <div style="display:flex;justify-content:flex-end;padding:16px 20px 0;">
-    <div class="theme-btn" id="authThemeBtn" onclick="toggleTheme()">◑</div>
+    <div class="theme-btn" id="authThemeBtn" onclick="toggleTheme()"><svg class="ico ico-sm"><use href="#ic-moon"/></svg></div>
   </div>
   <div class="auth-wrap" style="padding-top:8px;">
     <div class="auth-logo">Mizān.</div>
@@ -334,8 +409,8 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
     <div class="onboard-title" id="locTitle">Where are you from?</div>
     <div class="onboard-sub" id="locSub">We'll set your currency automatically.</div>
     <div id="locStep-planet"><div class="loc-grid" id="locPlanetGrid"></div></div>
-    <div id="locStep-continent" style="display:none;"><button class="loc-back" onclick="locBack('planet')">← Back</button><div class="loc-grid" id="locContinentGrid"></div></div>
-    <div id="locStep-country" style="display:none;"><button class="loc-back" onclick="locBack('continent')">← Back</button><input class="loc-search" id="locCountrySearch" placeholder="Search country..." oninput="filterCountries()"/><div class="loc-list" id="locCountryList"></div></div>
+    <div id="locStep-continent" style="display:none;"><button class="loc-back" onclick="locBack('planet')"><svg class="ico ico-sm"><use href="#ic-back"/></svg> Back</button><div class="loc-grid" id="locContinentGrid"></div></div>
+    <div id="locStep-country" style="display:none;"><button class="loc-back" onclick="locBack('continent')"><svg class="ico ico-sm"><use href="#ic-back"/></svg> Back</button><input class="loc-search" id="locCountrySearch" placeholder="Search country..." oninput="filterCountries()"/><div class="loc-list" id="locCountryList"></div></div>
   </div>
 </div>
 
@@ -345,7 +420,7 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
     <div class="onboard-title">Your Wallets</div>
     <div class="onboard-sub">Add your wallets — cash, bank, or mobile money. You can always add more later.</div>
     <div class="wallet-list" id="walletSetupList"></div>
-    <button class="add-source-btn" onclick="openAddWalletPopup()">＋ Add Wallet</button>
+    <button class="add-source-btn" onclick="openAddWalletPopup()"><svg class="ico ico-sm"><use href="#ic-add"/></svg> Add Wallet</button>
     <div class="onboard-skip" onclick="finishWalletSetup()"><span>Skip for now →</span></div>
     <div style="flex:1;min-height:20px;"></div>
     <button class="onboard-btn" onclick="finishWalletSetup()">DONE — LET'S GO</button>
@@ -358,7 +433,7 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
     <div class="onboard-title">Income Sources</div>
     <div class="onboard-sub">Add where your money comes from so you can track it accurately.</div>
     <div class="income-source-list" id="sourceList"></div>
-    <button class="add-source-btn" onclick="openAddSourcePopup()">＋ Add Income Source</button>
+    <button class="add-source-btn" onclick="openAddSourcePopup()"><svg class="ico ico-sm"><use href="#ic-add"/></svg> Add Income Source</button>
     <div class="onboard-skip" onclick="finishOnboard()"><span>Skip for now →</span></div>
     <div style="flex:1;min-height:20px;"></div>
     <button class="onboard-btn" onclick="finishOnboard()">DONE — LET'S GO</button>
@@ -373,7 +448,7 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
       <div class="header-name" id="appName">—</div>
     </div>
     <div class="header-right">
-      <div class="theme-btn" id="themeBtn" onclick="toggleTheme()">◑</div>
+      <div class="theme-btn" id="themeBtn" onclick="toggleTheme()"><svg class="ico ico-sm"><use href="#ic-moon"/></svg></div>
       <div class="avatar" id="appAvatar" onclick="openSettings()"></div>
     </div>
   </div>
@@ -387,7 +462,7 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
   <!-- AI QUICK ACCESS -->
   <div style="padding:0 20px 14px;">
     <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 14px;cursor:pointer;" onclick="switchTab('ai')">
-      <div style="font-size:18px;">✦</div>
+      <div style="line-height:1;color:var(--accent);"><svg class="ico ico-md"><use href="#ic-ai"/></svg></div>
       <div style="flex:1;">
         <div style="font-size:12px;font-weight:600;">Mizān Helper</div>
         <div style="font-size:11px;color:var(--text3);">Get AI advice on your spending</div>
@@ -399,8 +474,8 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
   <!-- TAB CONTENTS -->
   <div class="tab-content active" id="tab-add">
     <div class="type-row">
-      <button class="type-pill income on" id="pill-income" onclick="setTxType('income')">↑ Income</button>
-      <button class="type-pill expense" id="pill-expense" onclick="setTxType('expense')">↓ Expense</button>
+      <button class="type-pill income on" id="pill-income" onclick="setTxType('income')"><svg class="ico ico-sm"><use href="#ic-income"/></svg> Income</button>
+      <button class="type-pill expense" id="pill-expense" onclick="setTxType('expense')"><svg class="ico ico-sm"><use href="#ic-expense"/></svg> Expense</button>
     </div>
     <div class="amount-row">
       <span class="amount-sym" id="amtSymLabel">ETB</span>
@@ -468,14 +543,14 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
   </div>
 
   <div class="tab-content" id="tab-news">
-    <div class="news-sources" id="newsSources"></div>
+    <div id="newsSources" style="margin-bottom:16px;"></div>
     <div id="newsList" class="news-list"></div>
     <div style="height:20px;"></div>
   </div>
 
   <div class="tab-content" id="tab-ai">
     <div class="ai-hero">
-      <div class="ai-hero-title">✦ Mizān Helper</div>
+      <div class="ai-hero-title"><svg class="ico ico-md"><use href="#ic-ai"/></svg> Mizān Helper</div>
       <div class="ai-hero-sub">AI-powered financial advice based on your actual spending patterns.</div>
     </div>
     <div class="ai-quick-btns">
@@ -487,7 +562,7 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
     <div class="ai-chat" id="aiChat"></div>
     <div class="ai-input-row">
       <input class="ai-input" id="aiInput" placeholder="Ask anything about your finances..." onkeydown="if(event.key==='Enter')sendAiMsg()"/>
-      <button class="ai-send" id="aiSendBtn" onclick="sendAiMsg()">Send</button>
+      <button class="ai-send" id="aiSendBtn" onclick="sendAiMsg()"><svg class="ico ico-sm"><use href="#ic-send"/></svg></button>
     </div>
     <div style="height:20px;"></div>
   </div>
@@ -532,36 +607,36 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
     </div>
     <div class="settings-section-title">Account</div>
     <div class="settings-row" onclick="openAccountSetting('password')">
-      <div class="settings-row-left"><div class="settings-row-icon">🔑</div><div><div class="settings-row-label">Change Password</div><div class="settings-row-sub">Send a reset email</div></div></div>
+      <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-key"/></svg></div><div><div class="settings-row-label">Change Password</div><div class="settings-row-sub">Send a reset email</div></div></div>
       <div class="settings-row-arrow">›</div>
     </div>
     <div class="settings-row" onclick="openAccountSetting('email')">
-      <div class="settings-row-left"><div class="settings-row-icon">✉️</div><div><div class="settings-row-label">Change Email</div><div class="settings-row-sub" id="currentEmailDisplay">—</div></div></div>
+      <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-email"/></svg></div><div><div class="settings-row-label">Change Email</div><div class="settings-row-sub" id="currentEmailDisplay">—</div></div></div>
       <div class="settings-row-arrow">›</div>
     </div>
     <div class="settings-row" onclick="openAccountSetting('phone')">
-      <div class="settings-row-left"><div class="settings-row-icon">📱</div><div><div class="settings-row-label">Change Phone</div><div class="settings-row-sub" id="currentPhoneDisplay">—</div></div></div>
+      <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-mobile"/></svg></div><div><div class="settings-row-label">Change Phone</div><div class="settings-row-sub" id="currentPhoneDisplay">—</div></div></div>
       <div class="settings-row-arrow">›</div>
     </div>
     <div class="settings-row" onclick="openAccountSetting('photo')">
-      <div class="settings-row-left"><div class="settings-row-icon">🖼️</div><div><div class="settings-row-label">Change Photo</div><div class="settings-row-sub">Update your profile picture</div></div></div>
+      <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-photo"/></svg></div><div><div class="settings-row-label">Change Photo</div><div class="settings-row-sub">Update your profile picture</div></div></div>
       <div class="settings-row-arrow">›</div>
     </div>
     <div style="height:12px;"></div>
     <div class="settings-section-title">App</div>
     <div class="settings-row" onclick="closeSettings();switchTab('ai')">
-      <div class="settings-row-left"><div class="settings-row-icon">✦</div><div><div class="settings-row-label">Mizān Helper</div><div class="settings-row-sub">AI financial advice</div></div></div>
+      <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-ai"/></svg></div><div><div class="settings-row-label">Mizān Helper</div><div class="settings-row-sub">AI financial advice</div></div></div>
       <div class="settings-row-arrow">›</div>
     </div>
     <div class="settings-row" onclick="closeSettings();switchTab('news')">
-      <div class="settings-row-left"><div class="settings-row-icon">📰</div><div><div class="settings-row-label">Finance News</div><div class="settings-row-sub">Local & global insights</div></div></div>
+      <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-news"/></svg></div><div><div class="settings-row-label">Finance News</div><div class="settings-row-sub">Local & global insights</div></div></div>
       <div class="settings-row-arrow">›</div>
     </div>
     <div class="settings-row" onclick="openWalletManager()">
-      <div class="settings-row-left"><div class="settings-row-icon">👛</div><div><div class="settings-row-label">Manage Wallets</div><div class="settings-row-sub">Add or remove wallets</div></div></div>
+      <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-wallet"/></svg></div><div><div class="settings-row-label">Manage Wallets</div><div class="settings-row-sub">Add or remove wallets</div></div></div>
       <div class="settings-row-arrow">›</div>
     </div>
-    <button class="settings-logout" onclick="doLogout()">Sign Out</button>
+    <button class="settings-logout" onclick="doLogout()"><svg class="ico ico-sm"><use href="#ic-logout"/></svg> Sign Out</button>
   </div>
 </div>
 
@@ -630,9 +705,9 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
       <input id="w-name" placeholder="Wallet name (e.g. CBE Account)" type="text"/>
       <select id="w-type">
         <option value="">— Wallet type —</option>
-        <option value="cash">💵 Cash</option>
-        <option value="bank">🏦 Bank Account</option>
-        <option value="mobile">📱 Mobile Money</option>
+        <option value="cash">Cash</option>
+        <option value="bank">Bank Account</option>
+        <option value="mobile">Mobile Money</option>
       </select>
       <input id="w-provider" placeholder="Bank / Provider (e.g. CBE, TeleBirr)" type="text"/>
       <button class="popup-save-btn" onclick="saveWallet()">ADD WALLET</button>
@@ -647,7 +722,7 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
     <button class="popup-close" onclick="closeOverlay('overlay-wallet-manager')">✕</button>
     <div class="popup-title">Manage Wallets</div>
     <div class="wallet-list" id="walletManagerList"></div>
-    <button class="popup-save-btn" onclick="openAddWalletPopup()">＋ Add Wallet</button>
+    <button class="popup-save-btn" onclick="openAddWalletPopup()"><svg class="ico ico-sm"><use href="#ic-add"/></svg> Add Wallet</button>
   </div>
 </div>
 
@@ -680,7 +755,7 @@ let userCurrency='ETB', userCurrencySymbol='Br', userCountry=null;
 let exchangeRates={}, rateSource=null;
 let balanceVisible=true;
 let currentAccountSetting=null;
-let activeNewsSource='all';
+let activeNewsSource='local';
 let newsCache={};
 
 const SUBS=[
@@ -695,7 +770,7 @@ const SUBS=[
   {name:'Audible',color:'#F5A623',abbr:'AU'},{name:'Hulu',color:'#3DBB3D',abbr:'HU'},
 ];
 
-const WALLET_ICONS={cash:'💵',bank:'🏦',mobile:'📱'};
+const WALLET_ICONS={cash:'<svg class="ico ico-md"><use href="#ic-cash"/></svg>',bank:'<svg class="ico ico-md"><use href="#ic-bank"/></svg>',mobile:'<svg class="ico ico-md"><use href="#ic-mobile"/></svg>'};
 const WALLET_LABELS={cash:'Cash',bank:'Bank Account',mobile:'Mobile Money'};
 
 const EBM_CURRENCIES=['USD','EUR','GBP','SAR','AED','CHF','CAD','AUD','CNY','KWD','QAR','OMR'];
@@ -751,12 +826,15 @@ const COUNTRIES={
 
 // NEWS SOURCES
 const NEWS_SOURCES=[
-  {id:'all',label:'All'},
-  {id:'tikvah',label:'Tikvah Ethiopia',rss:'https://api.allorigins.win/raw?url='+encodeURIComponent('https://tikvahethiopia.com/feed/')},
-  {id:'bbc',label:'BBC Business',rss:'https://api.allorigins.win/raw?url='+encodeURIComponent('https://feeds.bbci.co.uk/news/business/rss.xml')},
-  {id:'ft',label:'Financial Times',rss:'https://api.allorigins.win/raw?url='+encodeURIComponent('https://www.ft.com/rss/home/uk')},
-  {id:'forbes',label:'Forbes Finance',rss:'https://api.allorigins.win/raw?url='+encodeURIComponent('https://www.forbes.com/money/feed2/')},
-  {id:'tips',label:'Money Tips',rss:null}, // static curated
+  {id:'local',label:'All Local',group:'local',rss:null},
+  {id:'fortune',label:'Addis Fortune',group:'local',rss:'https://api.allorigins.win/raw?url='+encodeURIComponent('https://addisfortune.news/feed/')},
+  {id:'capital',label:'Capital Ethiopia',group:'local',rss:'https://api.allorigins.win/raw?url='+encodeURIComponent('https://capitalethiopia.com/feed/')},
+  {id:'birrtu',label:'Birrtu / EBR',group:'local',rss:'https://api.allorigins.win/raw?url='+encodeURIComponent('https://ethiopianbusinessreview.net/feed/')},
+  {id:'intl',label:'All International',group:'intl',rss:null},
+  {id:'bbc',label:'BBC Business',group:'intl',rss:'https://api.allorigins.win/raw?url='+encodeURIComponent('https://feeds.bbci.co.uk/news/business/rss.xml')},
+  {id:'reuters',label:'Reuters Finance',group:'intl',rss:'https://api.allorigins.win/raw?url='+encodeURIComponent('https://feeds.reuters.com/reuters/businessNews')},
+  {id:'cnbc',label:'CNBC Finance',group:'intl',rss:'https://api.allorigins.win/raw?url='+encodeURIComponent('https://www.cnbc.com/id/10000664/device/rss/rss.html')},
+  {id:'tips',label:'Money Tips',group:'intl',rss:null},
 ];
 
 const MONEY_TIPS=[
@@ -962,17 +1040,17 @@ async function saveLocationAndContinue(country){
 function renderWalletSetupList(){
   const el=document.getElementById('walletSetupList');
   if(!wallets.length){el.innerHTML='<div style="text-align:center;font-size:12px;color:var(--text3);padding:16px;">No wallets added yet</div>';return;}
-  el.innerHTML=wallets.map((w,i)=>`<div class="wallet-item"><div class="wallet-item-icon">${WALLET_ICONS[w.type]||'💼'}</div><div class="wallet-item-info"><div class="wallet-item-name">${w.name}</div><div class="wallet-item-type">${WALLET_LABELS[w.type]||w.type}${w.provider?' · '+w.provider:''}</div></div><button class="wallet-item-del" onclick="removeWallet(${i})">✕</button></div>`).join('');
+  el.innerHTML=wallets.map((w,i)=>`<div class="wallet-item"><div class="wallet-item-icon">${WALLET_ICONS[w.type]||'<svg class="ico ico-md"><use href="#ic-wallet"/></svg>'}</div><div class="wallet-item-info"><div class="wallet-item-name">${w.name}</div><div class="wallet-item-type">${WALLET_LABELS[w.type]||w.type}${w.provider?' · '+w.provider:''}</div></div><button class="wallet-item-del" onclick="removeWallet(${i})"><svg class="ico ico-sm"><use href="#ic-close"/></svg></button></div>`).join('');
 }
 function renderWalletManagerList(){
   const el=document.getElementById('walletManagerList');
   if(!wallets.length){el.innerHTML='<div style="text-align:center;font-size:12px;color:var(--text3);padding:16px;">No wallets added yet</div>';return;}
-  el.innerHTML=wallets.map((w,i)=>`<div class="wallet-item"><div class="wallet-item-icon">${WALLET_ICONS[w.type]||'💼'}</div><div class="wallet-item-info"><div class="wallet-item-name">${w.name}</div><div class="wallet-item-type">${WALLET_LABELS[w.type]||w.type}${w.provider?' · '+w.provider:''}</div></div><button class="wallet-item-del" onclick="removeWallet(${i},true)">✕</button></div>`).join('');
+  el.innerHTML=wallets.map((w,i)=>`<div class="wallet-item"><div class="wallet-item-icon">${WALLET_ICONS[w.type]||'<svg class="ico ico-md"><use href="#ic-wallet"/></svg>'}</div><div class="wallet-item-info"><div class="wallet-item-name">${w.name}</div><div class="wallet-item-type">${WALLET_LABELS[w.type]||w.type}${w.provider?' · '+w.provider:''}</div></div><button class="wallet-item-del" onclick="removeWallet(${i},true)"><svg class="ico ico-sm"><use href="#ic-close"/></svg></button></div>`).join('');
 }
 function renderWalletSelect(){
   const sel=document.getElementById('walletSelect');
   sel.innerHTML='<option value="">— Select wallet —</option>';
-  wallets.forEach((w,i)=>sel.innerHTML+=`<option value="${i}">${WALLET_ICONS[w.type]||'💼'} ${w.name}</option>`);
+  wallets.forEach((w,i)=>sel.innerHTML+=`<option value="${i}">${WALLET_ICONS[w.type]||'<svg class="ico ico-md"><use href="#ic-wallet"/></svg>'} ${w.name}</option>`);
 }
 function renderWallets(){
   const scroll=document.getElementById('walletsScroll');
@@ -987,7 +1065,7 @@ function renderWallets(){
       return `<div class="wallet-card combined">
         <button class="eye-btn" onclick="toggleBalance()">${balanceVisible?'👁':'🙈'}</button>
         <div class="wallet-card-type">ALL WALLETS</div>
-        <div class="wallet-card-name"><span class="wicon">💼</span> Combined Balance</div>
+        <div class="wallet-card-name"><span class="wicon"><svg class="ico ico-md"><use href="#ic-wallet"/></svg></span> Combined Balance</div>
         <div class="wallet-balance-label">NET BALANCE</div>
         <div class="wallet-balance ${bal>=0?'pos':'neg'}">${hidden?'••••••':fmt(bal)}</div>
         <div class="wallet-row">
@@ -1004,7 +1082,7 @@ function renderWallets(){
     return `<div class="wallet-card">
       <button class="eye-btn" onclick="toggleBalance()">${balanceVisible?'👁':'🙈'}</button>
       <div class="wallet-card-type">${(WALLET_LABELS[w.type]||w.type).toUpperCase()}</div>
-      <div class="wallet-card-name"><span class="wicon">${WALLET_ICONS[w.type]||'💼'}</span>${w.name}</div>
+      <div class="wallet-card-name"><span class="wicon">${WALLET_ICONS[w.type]||'<svg class="ico ico-md"><use href="#ic-wallet"/></svg>'}</span>${w.name}</div>
       <div class="wallet-balance-label">BALANCE</div>
       <div class="wallet-balance ${wBal>=0?'pos':'neg'}">${hidden?'••••••':fmt(wBal)}</div>
       <div class="wallet-row">
@@ -1064,7 +1142,7 @@ function finishWalletSetup(){showScreen('onboard');renderSourceList();}
 function renderSourceList(){
   const el=document.getElementById('sourceList');
   if(!sources.length){el.innerHTML='<div style="text-align:center;font-size:12px;color:var(--text3);padding:16px;">No sources added yet</div>';return;}
-  el.innerHTML=sources.map((s,i)=>`<div class="income-source-item"><div><div class="income-source-name">${s.name}</div><div class="income-source-type">${s.type}${s.employer?' · '+s.employer:''}</div></div><button class="income-source-del" onclick="removeSource(${i})">✕</button></div>`).join('');
+  el.innerHTML=sources.map((s,i)=>`<div class="income-source-item"><div><div class="income-source-name">${s.name}</div><div class="income-source-type">${s.type}${s.employer?' · '+s.employer:''}</div></div><button class="income-source-del" onclick="removeSource(${i})"><svg class="ico ico-sm"><use href="#ic-close"/></svg></button></div>`).join('');
 }
 async function removeSource(i){
   const s=sources[i];
@@ -1404,7 +1482,7 @@ function updateUI(){
   if(!txs.length){list.innerHTML='<div class="empty-msg"><p>No transactions yet.<br/>Add your first one above.</p></div>';}
   else list.innerHTML=txs.map((t,i)=>`
     <div class="tx-card">
-      <div class="tx-icon ${t.type}">${t.type==='income'?'↑':'↓'}</div>
+      <div class="tx-icon ${t.type}">${t.type==='income'?'<svg class="ico ico-sm"><use href="#ic-income"/></svg>':'<svg class="ico ico-sm"><use href="#ic-expense"/></svg>'}</div>
       <div class="tx-body">
         <div class="tx-name">${t.desc}</div>
         <div class="tx-meta">${t.category}${t.detail?' · '+t.detail:''} · ${t.date}${t.originalAmt?' · '+t.originalCurrency+' '+t.originalAmt.toLocaleString('en-US',{maximumFractionDigits:2}):''}</div>
@@ -1412,7 +1490,7 @@ function updateUI(){
       <div class="tx-right">
         <div class="tx-amt ${t.type}">${t.type==='income'?'+':'-'}${fmt(t.amt)}</div>
         <div class="tx-actions">
-          <button class="tx-edit" onclick="editTx('${t.firestoreId||''}')">✎</button>
+          <button class="tx-edit" title="Edit" onclick="editTx('${t.firestoreId||''}')">✎</button>
           <button class="tx-del" onclick="deleteTx('${t.firestoreId||''}',${i})">✕</button>
         </div>
       </div>
@@ -1486,7 +1564,23 @@ function toggleCatDrilldown(el){
 // ══════════════════════════════════════
 function loadNews(){
   const sourcesEl=document.getElementById('newsSources');
-  sourcesEl.innerHTML=NEWS_SOURCES.map(s=>`<button class="news-source-btn ${activeNewsSource===s.id?'active':''}" onclick="setNewsSource('${s.id}')">${s.label}</button>`).join('');
+  let html='<div style="display:flex;flex-direction:column;gap:10px;width:100%;">';
+  html+='<div>';
+  html+='<div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;font-weight:600;">LOCAL</div>';
+  html+='<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+  NEWS_SOURCES.filter(s=>s.group==='local').forEach(s=>{
+    html+=`<button class="news-source-btn ${activeNewsSource===s.id?'active':''}" onclick="setNewsSource('${s.id}')">${s.label}</button>`;
+  });
+  html+='</div></div>';
+  html+='<div>';
+  html+='<div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;font-weight:600;">INTERNATIONAL</div>';
+  html+='<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+  NEWS_SOURCES.filter(s=>s.group==='intl').forEach(s=>{
+    html+=`<button class="news-source-btn ${activeNewsSource===s.id?'active':''}" onclick="setNewsSource('${s.id}')">${s.label}</button>`;
+  });
+  html+='</div></div></div>';
+  sourcesEl.innerHTML=html;
+  if(activeNewsSource==='all')activeNewsSource='local';
   renderNews();
 }
 
@@ -1500,38 +1594,39 @@ async function renderNews(){
   const list=document.getElementById('newsList');
   list.innerHTML='<div class="news-loading">Loading articles...</div>';
   const src=NEWS_SOURCES.find(s=>s.id===activeNewsSource);
-  if(!src)return;
+  if(!src){list.innerHTML='';return;}
+
   if(activeNewsSource==='tips'){
-    list.innerHTML=MONEY_TIPS.map(t=>`
-      <div class="news-card">
-        <div class="news-source-tag">${t.source.toUpperCase()}</div>
-        <div class="news-title">${t.title}</div>
-        <div class="news-desc">${t.desc}</div>
-        <div class="news-footer"><div class="news-date">${t.date}</div></div>
-      </div>`).join('');
+    list.innerHTML=MONEY_TIPS.map(t=>`<div class="news-card"><div class="news-source-tag">${t.source.toUpperCase()}</div><div class="news-title">${t.title}</div><div class="news-desc">${t.desc}</div><div class="news-footer"><div class="news-date">${t.date}</div></div></div>`).join('');
     return;
   }
-  if(activeNewsSource==='all'){
-    // Show tips + try to load one feed
-    let articles=MONEY_TIPS.map(t=>({source:t.source,title:t.title,desc:t.desc,date:t.date,link:null}));
-    try{
-      const bbcArticles=await fetchRSS('https://api.allorigins.win/raw?url='+encodeURIComponent('https://feeds.bbci.co.uk/news/business/rss.xml'),'BBC Business');
-      articles=[...bbcArticles,...articles];
-    }catch(e){}
-    list.innerHTML=articles.slice(0,20).map(a=>renderNewsCard(a)).join('');
+
+  // aggregate: local or intl group
+  if(activeNewsSource==='local'||activeNewsSource==='intl'){
+    const group=activeNewsSource;
+    const grouped=NEWS_SOURCES.filter(s=>s.group===group&&s.rss);
+    let allArticles=[];
+    if(group==='local'){
+      allArticles=[...MONEY_TIPS.filter((_,i)=>i>=6).map(t=>({source:t.source,title:t.title,desc:t.desc,date:t.date,link:null}))];
+    } else {
+      allArticles=[...MONEY_TIPS.filter((_,i)=>i<6).map(t=>({source:t.source,title:t.title,desc:t.desc,date:t.date,link:null}))];
+    }
+    const fetches=grouped.map(s=>fetchRSS(s.rss,s.label).catch(()=>[]));
+    const results=await Promise.allSettled(fetches);
+    results.forEach(r=>{if(r.status==='fulfilled')allArticles=[...r.value,...allArticles];});
+    if(!allArticles.length){list.innerHTML='<div class="news-loading">No articles available right now.</div>';return;}
+    list.innerHTML=allArticles.slice(0,25).map(a=>renderNewsCard(a)).join('');
     return;
   }
-  // specific source
-  if(newsCache[activeNewsSource]){
-    list.innerHTML=newsCache[activeNewsSource].map(a=>renderNewsCard(a)).join('');
-    return;
-  }
+
+  // specific source with cache
+  if(newsCache[activeNewsSource]){list.innerHTML=newsCache[activeNewsSource].map(a=>renderNewsCard(a)).join('');return;}
   try{
     const articles=await fetchRSS(src.rss,src.label);
     newsCache[activeNewsSource]=articles;
     list.innerHTML=articles.map(a=>renderNewsCard(a)).join('');
   }catch(e){
-    list.innerHTML='<div class="news-loading">Could not load articles. Check your connection.</div>';
+    list.innerHTML='<div class="news-loading">Could not load articles. Try another source.</div>';
   }
 }
 
@@ -1581,35 +1676,33 @@ function buildFinancialContext(){
 
 async function sendAiMsg(){
   const input=document.getElementById('aiInput');
-  const msg=input.value.trim();if(!msg)return;
+  const msg=input.value.trim();
+  if(!msg)return;
   input.value='';
   appendAiMsg(msg,'user');
   const loadId=appendAiMsg('Analyzing your finances...','ai loading');
   document.getElementById('aiSendBtn').disabled=true;
   try{
     const context=buildFinancialContext();
-    const messages=[
-      {role:'user',content:`${context}\n\nUser question: ${msg}`},
-      ...aiHistory.slice(-6),
-    ];
+    const country=(userCountry&&userCountry.name)||'Ethiopia';
+    const sysPrompt='You are Mizan Helper, a friendly personal finance advisor inside the Mizan money tracker app. User is from '+country+'. You have their real spending data. Give concise, practical, specific advice based on their actual numbers. Plain text only, no markdown formatting, no asterisks, no bullet symbols.';
+    const userContent=context+'
+
+My question: '+msg;
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1000,
-        system:`You are Mizān Helper, a friendly and practical financial advisor embedded in a personal finance app. You have access to the user's real transaction data. Give concise, actionable advice. Be warm but direct. Format responses clearly. If the user has no data yet, encourage them to add transactions first. Always consider their local context (${userCountry?.name||'Ethiopia'}).`,
-        messages
-      })
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:sysPrompt,messages:[{role:'user',content:userContent}]})
     });
     const data=await res.json();
-    const reply=data.content?.[0]?.text||'Sorry, I could not get a response right now.';
+    const reply=(data.content&&data.content[0]&&data.content[0].text)||'Sorry, could not get a response. Please try again.';
     removeAiMsg(loadId);
     appendAiMsg(reply,'ai');
     aiHistory.push({role:'user',content:msg},{role:'assistant',content:reply});
   }catch(e){
+    console.error('AI error:',e);
     removeAiMsg(loadId);
-    appendAiMsg('Connection error. Please try again.','ai');
+    appendAiMsg('Connection error. Please check your internet and try again.','ai');
   }
   document.getElementById('aiSendBtn').disabled=false;
 }
