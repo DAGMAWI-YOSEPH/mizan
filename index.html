@@ -1462,8 +1462,10 @@ async function addTx(){
   if(currentTxType==='income'){
     const si=document.getElementById('sourceSelect').value;
     if(!si){showToast('Select an income source');return;}
-    const src=sources[parseInt(si)];
-    category=src?`${src.name} · ${src.type}`:'Income';
+    let src;
+    if(si.startsWith('tpl-')){src=sourceTemplates[parseInt(si.replace('tpl-',''))];}
+    else{src=sources[parseInt(si)];}
+    category=src?src.name+' · '+src.type:'Income';
     if(incomeDetail.period||incomeDetail.note)detail=[incomeDetail.period,incomeDetail.note].filter(Boolean).join(' · ');
   } else {
     const cat=document.getElementById('expCatSelect').value;
