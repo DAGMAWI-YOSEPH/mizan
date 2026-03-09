@@ -918,6 +918,7 @@ TeleBirr: Received ETB 5,000.00 from +251911234567 on 08/03/2026" style="width:1
 
 <!-- FIREBASE -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -2316,16 +2317,54 @@ async function handlePdfImport(e){
     if(!pdfjsLib)throw new Error('PDF library not loaded. Try refreshing the app.');
     pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await pdfjsLib.getDocument({data:arrayBuf}).promise;
+    const maxPages=Math.min(pdf.numPages,20);
     let fullText='';
-    for(let p=1;p<=Math.min(pdf.numPages,20);p++){
+    let isImageBased=false;
+
+    // First pass: try text extraction
+    for(let p=1;p<=maxPages;p++){
       const page=await pdf.getPage(p);
       const tc=await page.getTextContent();
       fullText+=tc.items.map(function(i){return i.str;}).join(' ')+'\n';
     }
-    if(!fullText.trim())throw new Error('Could not extract text from PDF. Try a text-based PDF (not scanned image).');
+
+    // If little/no text extracted, fall back to OCR
+    const textDensity=fullText.replace(/\s/g,'').length;
+    if(textDensity < 50){
+      isImageBased=true;
+      fullText='';
+      statusEl.innerHTML='<div style="text-align:center;padding:12px;color:var(--text3);font-size:13px;">Image-based PDF detected — running OCR...<br/><span style="font-size:11px;opacity:.6;">This may take 10–30 seconds</span></div>';
+
+      for(let p=1;p<=maxPages;p++){
+        statusEl.innerHTML='<div style="text-align:center;padding:12px;color:var(--text3);font-size:13px;">OCR page '+p+' of '+maxPages+'...</div>';
+        const page=await pdf.getPage(p);
+        // Render page to canvas
+        const viewport=page.getViewport({scale:2.0}); // 2x scale for better OCR
+        const canvas=document.createElement('canvas');
+        canvas.width=viewport.width;
+        canvas.height=viewport.height;
+        const ctx=canvas.getContext('2d');
+        await page.render({canvasContext:ctx,viewport:viewport}).promise;
+        // OCR the canvas
+        const dataUrl=canvas.toDataURL('image/png');
+        const result=await Tesseract.recognize(dataUrl,'eng',{
+          logger:function(m){
+            if(m.status==='recognizing text'){
+              const pct=Math.round((m.progress||0)*100);
+              statusEl.innerHTML='<div style="text-align:center;padding:12px;color:var(--text3);font-size:13px;">OCR page '+p+' of '+maxPages+' — '+pct+'%</div>';
+            }
+          }
+        });
+        fullText+=result.data.text+'\n';
+      }
+    }
+
+    if(!fullText.trim())throw new Error('Could not read any text from this PDF.');
     const userName=userProfile?userProfile.name:'';
     const parsed=parseStatementText(fullText,userName);
-    if(!parsed.length)throw new Error('No transactions found. Make sure this is a bank statement PDF.');
+    if(!parsed.length)throw new Error(isImageBased
+      ?'OCR completed but no transactions found. The image quality may be too low.'
+      :'No transactions found. Make sure this is a bank statement PDF.');
     pendingPdfTxs=parsed;
     statusEl.style.display='none';
     renderImportPreview(parsed,'pdf');
