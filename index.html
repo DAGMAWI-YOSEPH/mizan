@@ -860,6 +860,25 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
   </div>
 </div>
 
+<!-- SOURCES MANAGER OVERLAY -->
+<div class="overlay" id="overlay-sources-manager" onclick="closeOverlay('overlay-sources-manager',event)">
+  <div class="popup" style="max-height:88vh;">
+    <div class="popup-handle"></div>
+    <button class="popup-close" onclick="closeOverlay('overlay-sources-manager')"><svg class="ico ico-sm"><use href="#ic-close"/></svg></button>
+    <div class="popup-title">Income Sources</div>
+    <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;font-weight:600;">YOUR SOURCES</div>
+    <div id="sourcesManagerList"></div>
+    <button class="add-source-btn" style="margin:12px 0;" onclick="openAddSourcePopup()">
+      <svg class="ico ico-sm"><use href="#ic-add"/></svg> Add Income Source
+    </button>
+    <div style="height:1px;background:var(--border);margin:4px 0 16px;"></div>
+    <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;font-weight:600;">SAVED TEMPLATES</div>
+    <div id="templateManagerList"></div>
+    <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:12px;">Templates are recurring sources saved for quick reuse.</div>
+  </div>
+</div>
+
+
 <!-- WALLET POPUP -->
 <div class="overlay" id="overlay-wallet" onclick="closeOverlay('overlay-wallet',event)">
   <div class="popup">
@@ -1359,8 +1378,31 @@ async function saveSource(){
     } else {
       showToast('Source added ✓');
     }
-    closeOverlay('overlay-source');renderSourceList();renderSourceSelect();renderSourcesManagerList();renderTemplateManagerList();
+    closeOverlay('overlay-source');renderSourceList();renderSourceSelect();if(document.getElementById('sourcesManagerList'))renderSourcesManagerList();if(document.getElementById('templateManagerList'))renderTemplateManagerList();renderSourcesManagerList();renderTemplateManagerList();
   }catch(e){showToast('Error: '+e.message);console.error(e);}
+}
+function openSourcesManager(){
+  renderSourcesManagerList();
+  renderTemplateManagerList();
+  openOverlay('overlay-sources-manager');
+}
+function renderSourcesManagerList(){
+  const el=document.getElementById('sourcesManagerList');
+  if(!el)return;
+  if(!sources.length){
+    el.innerHTML='<div style="text-align:center;font-size:12px;color:var(--text3);padding:12px 0;">No sources added yet.</div>';
+    return;
+  }
+  el.innerHTML=sources.map((s,i)=>'<div class="income-source-item">'
+    +'<div><div class="income-source-name">'+s.name+'</div>'
+    +'<div class="income-source-type">'+s.type+(s.employer?' · '+s.employer:'')+(s.recurring?' · Recurring':'')+'</div></div>'
+    +'<button class="income-source-del" onclick="removeSourceFromManager('+i+')"><svg class="ico ico-sm"><use href="#ic-trash"/></svg></button>'
+    +'</div>').join('');
+}
+async function removeSourceFromManager(i){
+  const s=sources[i];
+  if(s.id&&currentUser)await db.collection('users').doc(currentUser.uid).collection('sources').doc(s.id).delete().catch(()=>{});
+  sources.splice(i,1);renderSourcesManagerList();renderSourceSelect();showToast('Source deleted');
 }
 function openTemplateManager(){
   renderTemplateManagerList();
@@ -1767,31 +1809,90 @@ async function clearAll(){
 // ══════════════════════════════════════
 function fmt(n){return userCurrency+' '+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
+function renderTxCard(t,i){
+  const typeIcon={income:'#ic-income-filled',expense:'#ic-expense-filled',transfer:'#ic-transfer-filled'};
+  const icon=typeIcon[t.type]||'#ic-expense-filled';
+  const sign=t.type==='income'?'+':t.type==='transfer'?'':'\u2212';
+  const amtClass=t.type==='income'?'income':t.type==='transfer'?'accent':'expense';
+  const fid=(t.firestoreId||'').replace(/['"]/g,'');
+  const walletName=t.walletId?((wallets.find(function(w){return w.id===t.walletId;})||{}).name||''):'';
+  const editBtn='<button class="tx-edit" onclick="editTx(\'' + fid + '\')"><svg class="ico ico-sm"><use href=\"#ic-edit\"/></svg></button>';
+  const delBtn='<button class="tx-del" onclick="deleteTx(\'' + fid + '\',' + i + ')"><svg class="ico ico-sm"><use href=\"#ic-trash\"/></svg></button>';
+  return '<div class="tx-card">'
+    +'<div class="tx-icon '+t.type+'"><svg class="ico ico-sm"><use href="'+icon+'"/></svg></div>'
+    +'<div class="tx-body">'
+    +'<div class="tx-name">'+(t.desc||'')+'</div>'
+    +'<div class="tx-meta">'+(t.category||'')+(t.detail?' · '+t.detail:'')+(walletName?' · '+walletName:'')+' · '+t.date+'</div>'
+    +'</div>'
+    +'<div class="tx-right">'
+    +'<div class="tx-amt '+amtClass+'">'+sign+fmt(t.amt)+'</div>'
+    +'<div class="tx-actions">'+editBtn+delBtn+'</div>'
+    +'</div></div>';
+}
+
+function renderRecent(){
+  const el=document.getElementById('recentTxList');
+  if(!el)return;
+  const recent=txs.filter(t=>t.type!=='transfer').slice(0,5);
+  if(!recent.length){el.innerHTML='<div class="empty-msg"><p>No transactions yet.<br/>Tap + to get started.</p></div>';return;}
+  el.innerHTML=recent.map(t=>renderTxCard(t,txs.indexOf(t))).join('');
+}
+
+function setHistoryFilter(type){
+  historyTypeFilter=type;
+  ['all','income','expense','transfer'].forEach(f=>{
+    const b=document.getElementById('hf-'+f);
+    if(b)b.classList.toggle('active',f===type);
+  });
+  txVisibleCount=5;
+  renderHistory();
+}
+
+function setHistoryWalletFilter(wf){
+  historyWalletFilter=wf;
+  txVisibleCount=5;
+  renderHistory();
+}
+
+function renderHistoryWalletFilter(){
+  const el=document.getElementById('historyWalletFilter');
+  if(!el)return;
+  const btns=[{id:'combined',label:'All'},...wallets.map(w=>({id:w.id||w.name,label:w.name}))];
+  el.innerHTML=btns.map(function(b){return '<button class="cat-filter-btn '+(historyWalletFilter===b.id?'active':'')+' " onclick="setHistoryWalletFilter(\'' +b.id+ '\')">'+b.label+'</button>';}).join('');
+}
+
+function renderHistory(){
+  renderHistoryWalletFilter();
+  const list=document.getElementById('txList');
+  if(!list)return;
+  let filtered=[...txs];
+  if(historyWalletFilter!=='combined'){
+    filtered=filtered.filter(t=>t.walletId===historyWalletFilter||t.fromWalletId===historyWalletFilter||t.toWalletId===historyWalletFilter);
+  }
+  if(historyTypeFilter!=='all'){
+    filtered=filtered.filter(t=>t.type===historyTypeFilter);
+  }
+  if(!filtered.length){
+    list.innerHTML='<div class="empty-msg"><p>No transactions here.</p></div>';
+    document.getElementById('showMoreWrap').style.display='none';
+    return;
+  }
+  const visible=filtered.slice(0,txVisibleCount);
+  list.innerHTML=visible.map(t=>renderTxCard(t,txs.indexOf(t))).join('');
+  const smw=document.getElementById('showMoreWrap');
+  if(smw)smw.style.display=filtered.length>txVisibleCount?'block':'none';
+}
+
+function showMoreTx(){txVisibleCount+=5;renderHistory();}
+
 function updateUI(){
   const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amt,0);
   const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amt,0);
-  // HISTORY
-  const list=document.getElementById('txList');
-  if(!txs.length){list.innerHTML='<div class="empty-msg"><p>No transactions yet.<br/>Add your first one above.</p></div>';}
-  else list.innerHTML=txs.map((t,i)=>`
-    <div class="tx-card">
-      <div class="tx-icon ${t.type}">${t.type==='income'?'<svg class="ico ico-sm"><use href="#ic-income"/></svg>':'<svg class="ico ico-sm"><use href="#ic-expense"/></svg>'}</div>
-      <div class="tx-body">
-        <div class="tx-name">${t.desc}</div>
-        <div class="tx-meta">${t.category}${t.detail?' · '+t.detail:''} · ${t.date}${t.originalAmt?' · '+t.originalCurrency+' '+t.originalAmt.toLocaleString('en-US',{maximumFractionDigits:2}):''}</div>
-      </div>
-      <div class="tx-right">
-        <div class="tx-amt ${t.type}">${t.type==='income'?'+':'-'}${fmt(t.amt)}</div>
-        <div class="tx-actions">
-          <button class="tx-edit" title="Edit" onclick="editTx('${t.firestoreId||''}')">✎</button>
-          <button class="tx-del" onclick="deleteTx('${t.firestoreId||''}',${i})">✕</button>
-        </div>
-      </div>
-    </div>`).join('');
-  // STATS
+  renderRecent();
+  renderHistory();
   updateStats(inc,exp);
-  // currency label
-  document.getElementById('amtSymLabel').textContent=userCurrency;
+  const sl=document.getElementById('amtSymLabel');
+  if(sl)sl.textContent=userCurrency;
 }
 
 // ══════════════════════════════════════
@@ -2092,9 +2193,9 @@ async function saveTelegramChatId(){
     try{await db.collection('users').doc(currentUser.uid).collection('prefs').doc('rates').set({telegramChatId:val,reminderEnabled:true},{merge:true});}catch(e){}
   }
   // Send a test message via Telegram bot
-  await sendTelegramRateReminder(true);
-  document.getElementById('reminderSubtitle').textContent='Reminder active — every Monday';
-  showToast('Chat ID saved! Test message sent ✓');
+  const sent=await sendTelegramRateReminder(true);
+  document.getElementById('reminderSubtitle').textContent=sent?'Reminder active — every Monday':'Chat ID saved (check bot token)';
+  if(sent)showToast('Test message sent! Check Telegram ✓');
 }
 
 async function sendTelegramRateReminder(isTest=false){
@@ -2104,12 +2205,19 @@ async function sendTelegramRateReminder(isTest=false){
   const weekMsg='\u{1F4CA} Mizan - Time to update your rates! It is Monday - the black market rates may have changed. Open Mizan > Settings > Exchange Rates to enter this week rates.';
   const msg=isTest?testMsg:weekMsg;
   try{
-    await fetch('https://api.telegram.org/bot'+BOT_TOKEN+'/sendMessage',{
+    const tgResp=await fetch('https://api.telegram.org/bot'+BOT_TOKEN+'/sendMessage',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({chat_id:telegramChatId,text:msg})
     });
-  }catch(e){console.warn('Telegram send failed',e);}
+    const tgData=await tgResp.json();
+    if(!tgData.ok){
+      console.warn('Telegram error:',tgData);
+      showToast('Telegram error: '+tgData.description);
+      return false;
+    }
+    return true;
+  }catch(e){console.warn('Telegram send failed',e);showToast('Could not reach Telegram');return false;}
 }
 
 function checkRateReminder(){
@@ -2220,7 +2328,10 @@ Parse every single transaction. If unclear, guess income vs expense from context
 
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{
+        'Content-Type':'application/json',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
       body:JSON.stringify({
         model:'claude-sonnet-4-6',
         max_tokens:4000,
@@ -2234,9 +2345,10 @@ Parse every single transaction. If unclear, guess income vs expense from context
       })
     });
     const data=await resp.json();
-    if(!data.content||!data.content[0]){throw new Error('No response from AI');}
-    let raw=data.content[0].text.trim();
-    raw=raw.replace(/```json|```/g,'').trim();
+    if(!data.content||!data.content.length){throw new Error('No response from AI: '+JSON.stringify(data));}
+    const textBlk=data.content.find(b=>b.type==='text');
+    if(!textBlk)throw new Error('No text block in response');
+    let raw=textBlk.text.trim().replace(/```json|```/g,'').trim();
     const parsed=JSON.parse(raw);
     if(!Array.isArray(parsed)||!parsed.length)throw new Error('No transactions found');
     pendingPdfTxs=parsed;
@@ -2354,7 +2466,10 @@ async function parseSmsText(){
   try{
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{
+        'Content-Type':'application/json',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
       body:JSON.stringify({
         model:'claude-sonnet-4-6',
         max_tokens:2000,
@@ -2367,7 +2482,9 @@ ${text}`
       })
     });
     const data=await resp.json();
-    let raw=data.content[0].text.trim().replace(/\`\`\`json|\`\`\`/g,'').trim();
+    const textBlock=data.content.find(b=>b.type==='text');
+    if(!textBlock)throw new Error('No text in AI response');
+    let raw=textBlock.text.trim().replace(/```json|```/g,'').trim();
     const parsed=JSON.parse(raw);
     if(!Array.isArray(parsed)||!parsed.length)throw new Error('No transactions found in messages');
     pendingSmsTxs=parsed;
