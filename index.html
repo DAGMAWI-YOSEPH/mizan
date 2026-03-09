@@ -800,12 +800,16 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
 
     <!-- SMS TAB -->
     <div id="imp-sms" style="display:none;">
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:1.6;">
-        Mizan will read your SMS messages and find bank transaction alerts from CBE Birr, TeleBirr, Awash Bank, and others. Messages are processed on-device and never stored.
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.5;">
+        Copy bank alert SMS messages and paste them below. Works with CBE Birr, TeleBirr, Awash, Dashen, HelloCash and more.
       </div>
-      <div id="smsPermStatus" style="text-align:center;padding:8px 0 14px;">
-        <div style="font-size:13px;color:var(--text3);margin-bottom:12px;">SMS reading requires device permission.</div>
-        <button onclick="requestSmsPermission()" style="padding:12px 24px;background:var(--accent);border:none;border-radius:12px;font-size:13px;font-weight:600;color:var(--bg);cursor:pointer;">Grant Permission & Scan</button>
+      <div id="smsPermStatus">
+        <textarea id="smsPasteArea" placeholder="Paste your bank SMS messages here, one per line or all together.
+
+Example:
+CBE: ETB 1,500.00 debited. Merchant: BOLE MINI MART. Balance: ETB 12,340.00
+TeleBirr: Received ETB 5,000.00 from +251911234567 on 08/03/2026" style="width:100%;height:160px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--text);resize:none;outline:none;line-height:1.5;box-sizing:border-box;"></textarea>
+        <button onclick="parseSmsText()" style="width:100%;padding:13px;background:var(--accent);border:none;border-radius:12px;font-size:13px;font-weight:600;color:var(--bg);cursor:pointer;margin-top:10px;">Parse Messages</button>
       </div>
       <div id="smsList" style="display:none;">
         <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;" id="smsPreviewTitle"></div>
@@ -2303,80 +2307,178 @@ async function handlePdfImport(e){
   if(!file)return;
   const statusEl=document.getElementById('pdfStatus');
   statusEl.style.display='block';
-  statusEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px;">Reading PDF with AI... this may take a moment.</div>';
+  statusEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px;">Reading PDF...</div>';
   document.getElementById('pdfPreview').style.display='none';
   try{
-    // Read PDF as base64
-    const base64=await new Promise((res,rej)=>{
-      const r=new FileReader();
-      r.onload=ev=>res(ev.target.result.split(',')[1]);
-      r.onerror=()=>rej(new Error('Failed to read file'));
-      r.readAsDataURL(file);
-    });
-    // Send to Claude AI for extraction
-    const prompt=`You are a bank statement parser. Extract ALL transactions from this bank statement PDF.
-Return ONLY a JSON array, no other text. Each item must have:
-- date: string (e.g. "Mar 5" or "2024-03-05")
-- desc: string (merchant/description, max 50 chars)  
-- type: "income" or "expense"
-- amt: number (always positive, in the statement currency)
-- category: best guess from: Food & Dining, Transport, Housing, Health, Shopping, Education, Travel, Utilities, Salary, Transfer, Other
-
-Example: [{"date":"Mar 5","desc":"Salary CBE","type":"income","amt":15000,"category":"Salary"}]
-
-Parse every single transaction. If unclear, guess income vs expense from context (credits=income, debits=expense).`;
-
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:4000,
-        messages:[{
-          role:'user',
-          content:[
-            {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
-            {type:'text',text:prompt}
-          ]
-        }]
-      })
-    });
-    const data=await resp.json();
-    if(!data.content||!data.content.length){throw new Error('No response from AI: '+JSON.stringify(data));}
-    const textBlk=data.content.find(b=>b.type==='text');
-    if(!textBlk)throw new Error('No text block in response');
-    let raw=textBlk.text.trim().replace(/```json|```/g,'').trim();
-    const parsed=JSON.parse(raw);
-    if(!Array.isArray(parsed)||!parsed.length)throw new Error('No transactions found');
+    const arrayBuf=await file.arrayBuffer();
+    const pdfjsLib=window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf=await pdfjsLib.getDocument({data:arrayBuf}).promise;
+    let fullText='';
+    for(let p=1;p<=Math.min(pdf.numPages,20);p++){
+      const page=await pdf.getPage(p);
+      const tc=await page.getTextContent();
+      fullText+=tc.items.map(function(i){return i.str;}).join(' ')+'\n';
+    }
+    if(!fullText.trim())throw new Error('Could not extract text from PDF. Try a text-based PDF (not scanned image).');
+    const userName=userProfile?userProfile.name:'';
+    const parsed=parseStatementText(fullText,userName);
+    if(!parsed.length)throw new Error('No transactions found. Make sure this is a bank statement PDF.');
     pendingPdfTxs=parsed;
     statusEl.style.display='none';
     renderImportPreview(parsed,'pdf');
   }catch(err){
-    statusEl.innerHTML=`<div style="text-align:center;padding:16px;color:var(--expense);font-size:13px;">Error: ${err.message}<br/><span style="color:var(--text3);font-size:11px;">Make sure the PDF is a readable bank statement (not scanned image).</span></div>`;
+    statusEl.innerHTML='<div style="text-align:center;padding:16px;color:var(--expense);font-size:13px;">'+err.message+'</div>';
     document.getElementById('pdfFileInput').value='';
   }
 }
 
-function renderImportPreview(txList, mode){
+async function parseSmsText(){
+  const text=document.getElementById('smsPasteArea')?.value?.trim();
+  if(!text){showToast('Paste some SMS messages first');return;}
+  const statusEl=document.getElementById('smsPermStatus');
+  statusEl.innerHTML='<div style="text-align:center;padding:12px;color:var(--text3);font-size:13px;">Parsing messages...</div>';
+  try{
+    const lines=text.split(/[\r\n]+/).map(function(l){return l.trim();}).filter(Boolean);
+    const parsed=[];
+    lines.forEach(function(line){var uname=userProfile?userProfile.name:''; var tx=parseSingleSms(line,uname);if(tx)parsed.push(tx);});
+    if(!parsed.length)throw new Error('No bank transactions found. Make sure you pasted bank alert SMS messages.');
+    pendingSmsTxs=parsed;
+    statusEl.style.display='none';
+    document.getElementById('smsList').style.display='block';
+    renderImportPreview(parsed,'sms');
+  }catch(err){
+    statusEl.innerHTML='<div style="text-align:center;padding:16px;color:var(--expense);font-size:13px;">'+err.message+'</div>'
+      +'<button onclick="fallbackSmsInput()" style="width:100%;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text2);cursor:pointer;margin-top:8px;">Try again</button>';
+  }
+}
+
+function parseSingleSms(line,userName){
+  // Normalise
+  const l=line.replace(/,/g,'').replace(/ETB/gi,'ETB').replace(/Br/g,'ETB');
+
+  // ── Amount extraction patterns ──
+  // "ETB 1500.00" / "ETB1,500" / "1500.00 ETB" / "Birr 500"
+  const amtPatterns=[
+    /(?:ETB|Birr|birr)\s*([\d]+(?:\.\d{1,2})?)/i,
+    /([\d]+(?:\.\d{1,2})?)\s*(?:ETB|Birr)/i,
+    /Amount[:\s]+([\d]+(?:\.\d{1,2})?)/i,
+    /(?:debited|credited|received|sent|paid)[^\d]*([\d]+(?:\.\d{1,2})?)/i,
+  ];
+  let amt=null;
+  for(const p of amtPatterns){const m=l.match(p);if(m){amt=parseFloat(m[1]);break;}}
+  if(!amt||amt<=0)return null;
+
+  // ── Type detection ──
+  const debitWords=/debit|withdraw|paid|sent|payment|purchase|expense|charged|spend|bought/i;
+  const creditWords=/credit|deposit|received|receive|incoming|salary|transferred to you|added/i;
+  let type='expense';
+  if(creditWords.test(l))type='income';
+  if(debitWords.test(l))type='expense';
+
+  // ── Self-transfer detection ──
+  // If the sender or recipient name matches the user's own name → it's a self-transfer
+  if(userName){
+    const nameParts=userName.toLowerCase().split(/\s+/).filter(function(p){return p.length>2;});
+    const isSelf=nameParts.some(function(part){return l.toLowerCase().includes(part);});
+    if(isSelf && (type==='income' || /transfer|sent to|from yourself/i.test(l))){
+      type='transfer';
+    }
+  }
+  // Also catch explicit self-transfer keywords
+  if(/own account|self transfer|my account|between.*account/i.test(l)) type='transfer';
+
+  // ── Description ──
+  let desc=type==='transfer'?'Self Transfer':'';
+  // Merchant after "at " or "to " or "Merchant:"
+  const merchantMatch=l.match(/(?:at|to|from|Merchant[:\s]+)\s*([A-Z][A-Z\s&.']{2,30})/i);
+  if(merchantMatch)desc=merchantMatch[1].trim();
+  // Sender name for incoming
+  const fromMatch=l.match(/from\s+([A-Z][a-zA-Z\s]{2,20})(?:\s|$)/i);
+  if(!desc&&fromMatch)desc=fromMatch[1].trim();
+  if(!desc)desc=type==='income'?'Incoming transfer':'Payment';
+
+  // ── Date ──
+  const dateMatch=l.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})|(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*\d{0,4})/i);
+  const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const date=dateMatch?dateMatch[0]:today;
+
+  // ── Category ──
+  let category='Other';
+  if(/salary|payroll|wage/i.test(l))category='Salary';
+  else if(/food|restaurant|cafe|coffee|pizza|burger|kitchen|dining|hotel|mealtime/i.test(l))category='Food & Dining';
+  else if(/taxi|ride|uber|bolt|transport|bus|fuel|petrol|parking/i.test(l))category='Transport';
+  else if(/rent|housing|electric|water|utility|internet|wifi|broadband/i.test(l))category='Utilities';
+  else if(/shop|market|store|mall|supermarket|purchase/i.test(l))category='Shopping';
+  else if(/hospital|clinic|pharmacy|doctor|health|medical/i.test(l))category='Health';
+  else if(/school|university|tuition|education|college/i.test(l))category='Education';
+  else if(type==='transfer')category='Self Transfer';
+  else if(/transfer|send|receive|telebirr|cbebirr|hellocash|awash/i.test(l))category='Transfer';
+  else if(type==='income')category='Salary';
+
+  return {desc,type,amt,category,date};
+}
+
+function parseStatementText(text,userName){
+  // Split into lines and try to extract rows that look like transactions
+  const lines=text.split(/[\r\n]+/).map(function(l){return l.trim();}).filter(function(l){return l.length>5;});
+  const results=[];
+  // Look for lines containing a money amount
+  const amtRe=/[\d,]+\.\d{2}/;
+  const dateRe=/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*/i;
+  lines.forEach(line=>{
+    if(!amtRe.test(line))return;
+    // Extract all amounts from line
+    const amounts=line.match(/[\d,]+\.\d{2}/g)||[];
+    if(!amounts.length)return;
+    // Use the first or largest amount
+    const amt=Math.max(...amounts.map(a=>parseFloat(a.replace(/,/g,''))));
+    if(amt<1)return;
+    // Date
+    const dm=line.match(dateRe);
+    const date=dm?dm[0]:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    // Type — look for Dr/Cr markers common in bank statements
+    let type='expense';
+    if(/Cr|credit|deposit|received|\+/i.test(line))type='income';
+    if(/Dr|debit|withdraw|paid|\-(?!\d)/i.test(line))type='expense';
+    // Description — text between date and amount (usually)
+    let desc=line.replace(dateRe,'').replace(/[\d,]+\.\d{2}/g,'').replace(/[|]/g,' ').trim();
+    desc=desc.replace(/\s{2,}/g,' ').substring(0,50).trim()||'Transaction';
+    // Category
+    let category='Other';
+    if(/salary|payroll/i.test(desc))category='Salary';
+    else if(/food|restaurant|cafe|supermarket/i.test(desc))category='Food & Dining';
+    else if(/taxi|transport|fuel|petrol/i.test(desc))category='Transport';
+    else if(/rent|electric|water|utility/i.test(desc))category='Utilities';
+    else if(/shop|market|purchase/i.test(desc))category='Shopping';
+    else if(/transfer|telebirr|cbe/i.test(desc))category='Transfer';
+    else if(type==='income')category='Salary';
+    results.push({desc,type,amt,category,date});
+  });
+  return results;
+}
+
+
+
+function renderImportPreview(txList,mode){
   const listId=mode==='pdf'?'pdfTxList':'smsTxList';
   const titleId=mode==='pdf'?'pdfPreviewTitle':'smsPreviewTitle';
   const previewId=mode==='pdf'?'pdfPreview':'smsList';
   const inc=txList.filter(t=>t.type==='income').length;
   const exp=txList.filter(t=>t.type==='expense').length;
-  document.getElementById(titleId).textContent=`Found ${txList.length} transactions — ${inc} income, ${exp} expenses`;
+  document.getElementById(titleId).textContent='Found '+txList.length+' transactions — '+inc+' income, '+exp+' expenses';
   const el=document.getElementById(listId);
-  el.innerHTML=txList.map((t,i)=>`
-    <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border-radius:10px;padding:10px 12px;border:1px solid var(--border);">
-      <input type="checkbox" id="imp-chk-${mode}-${i}" checked style="width:16px;height:16px;flex-shrink:0;accent-color:var(--accent);cursor:pointer;"/>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.desc}</div>
-        <div style="font-size:10px;color:var(--text3);">${t.category} · ${t.date}</div>
-      </div>
-      <div style="font-size:13px;font-weight:700;flex-shrink:0;color:${t.type==='income'?'var(--income)':'var(--expense)'};">${t.type==='income'?'+':'-'}${userCurrency} ${parseFloat(t.amt).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-    </div>`).join('');
+  el.innerHTML=txList.map(function(t,i){
+    return '<div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border-radius:10px;padding:10px 12px;border:1px solid var(--border);">'
+      +'<input type="checkbox" id="imp-chk-'+mode+'-'+i+'" checked style="width:16px;height:16px;flex-shrink:0;accent-color:var(--accent);cursor:pointer;"/>'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+t.desc+'</div>'
+      +'<div style="font-size:10px;color:var(--text3);">'+t.category+' · '+t.date+'</div>'
+      +'</div>'
+      +'<div style="font-size:13px;font-weight:700;flex-shrink:0;color:'+(t.type==='income'?'var(--income)':'var(--expense)')+';">'
+      +(t.type==='income'?'+':'-')+userCurrency+' '+parseFloat(t.amt).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})
+      +'</div></div>';
+  }).join('');
   document.getElementById(previewId).style.display='block';
 }
 
@@ -2390,155 +2492,65 @@ function cancelPdfImport(){
 async function confirmPdfImport(){
   const btn=document.getElementById('pdfConfirmBtn');
   btn.textContent='Adding...';btn.disabled=true;
-  const selected=pendingPdfTxs.filter((_,i)=>document.getElementById('imp-chk-pdf-'+i)?.checked);
+  const selected=pendingPdfTxs.filter(function(_,i){return document.getElementById('imp-chk-pdf-'+i)?.checked;});
   let added=0;
   for(const t of selected){
-    const tx={
-      type:t.type,
-      amt:parseFloat(t.amt),
-      desc:t.desc,
-      category:t.category||'Other',
-      detail:'Imported from PDF',
-      originalAmt:null,originalCurrency:null,walletId:null,
-      date:t.date||new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),
-      createdAt:Date.now()-added
-    };
+    const tx={type:t.type,amt:parseFloat(t.amt),desc:t.desc,category:t.category||'Other',
+      detail:'Imported from PDF',originalAmt:null,originalCurrency:null,walletId:null,
+      date:t.date||new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),createdAt:Date.now()-added};
     try{
       if(currentUser){const ref=await db.collection('users').doc(currentUser.uid).collection('transactions').add(tx);tx.firestoreId=ref.id;}
       txs.unshift(tx);added++;
     }catch(e){console.error(e);}
   }
-  closeOverlay('overlay-import');
-  updateUI();renderWallets();
+  closeOverlay('overlay-import');updateUI();renderWallets();
   showToast(added+' transactions imported ✓');
   cancelPdfImport();
   btn.textContent='Add All to Mizan';btn.disabled=false;
-}
-
-// ── SMS IMPORT ──────────────────────────────
-async function requestSmsPermission(){
-  // Try Telegram WebApp native SMS access first
-  const tg=window.Telegram?.WebApp;
-  if(tg&&tg.requestContact){
-    // Telegram Mini App: use RequestSMSAccess if available (newer Telegram versions)
-    try{
-      if(typeof tg.RequestSMSAccess==='function'||typeof tg.requestSMSAccess==='function'){
-        const fn=tg.RequestSMSAccess||tg.requestSMSAccess;
-        fn(result=>{
-          if(result&&result.messages){
-            processSmsMessages(result.messages);
-          }else{
-            fallbackSmsInput();
-          }
-        });
-        return;
-      }
-    }catch(e){}
-  }
-  // Android: try native SMS via Telegram bridge
-  if(tg&&tg.sendData){
-    // Show manual paste fallback
-    fallbackSmsInput();
-    return;
-  }
-  fallbackSmsInput();
-}
-
-function fallbackSmsInput(){
-  // Show a textarea for manual SMS paste
-  document.getElementById('smsPermStatus').innerHTML=`
-    <div style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.5;">
-      Automatic SMS reading isn't available on this device/browser.<br/>
-      Paste your bank SMS messages below — one per line or all together.
-    </div>
-    <textarea id="smsPasteArea" placeholder="Paste SMS messages here...
-
-Example:
-CBE: ETB 1,500.00 debited. Merchant: BOLE MINI MART. Balance: ETB 12,340.00
-TeleBirr: Received ETB 5,000.00 from +251911234567" style="width:100%;height:140px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--text);resize:none;outline:none;line-height:1.5;"></textarea>
-    <button onclick="parseSmsText()" style="width:100%;padding:13px;background:var(--accent);border:none;border-radius:12px;font-size:13px;font-weight:600;color:var(--bg);cursor:pointer;margin-top:10px;">Parse Messages</button>`;
-}
-
-async function parseSmsText(){
-  const text=document.getElementById('smsPasteArea')?.value?.trim();
-  if(!text){showToast('Paste some SMS messages first');return;}
-  document.getElementById('smsPermStatus').innerHTML='<div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">Analyzing messages with AI...</div>';
-  try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:2000,
-        messages:[{
-          role:'user',
-          content:`Extract bank transactions from these SMS messages. Return ONLY a JSON array, no other text. Each item: {"date":"Mar 5","desc":"merchant name","type":"income or expense","amt":number (positive),"category":"one of: Food & Dining, Transport, Housing, Health, Shopping, Salary, Transfer, Other"}. If a message is not a bank transaction, skip it. Messages:
-
-${text}`
-        }]
-      })
-    });
-    const data=await resp.json();
-    const textBlock=data.content.find(b=>b.type==='text');
-    if(!textBlock)throw new Error('No text in AI response');
-    let raw=textBlock.text.trim().replace(/```json|```/g,'').trim();
-    const parsed=JSON.parse(raw);
-    if(!Array.isArray(parsed)||!parsed.length)throw new Error('No transactions found in messages');
-    pendingSmsTxs=parsed;
-    document.getElementById('smsPermStatus').style.display='none';
-    document.getElementById('smsList').style.display='block';
-    renderImportPreview(parsed,'sms');
-  }catch(err){
-    document.getElementById('smsPermStatus').innerHTML=`<div style="text-align:center;padding:16px;color:var(--expense);font-size:13px;">Error: ${err.message}</div><button onclick="fallbackSmsInput()" style="width:100%;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text2);cursor:pointer;margin-top:8px;">Try again</button>`;
-  }
-}
-
-function processSmsMessages(messages){
-  // Process array of {body, date} objects from Telegram native API
-  const text=messages.map(m=>m.body||m).join('\n');
-  document.getElementById('smsPasteArea').value=text;
-  parseSmsText();
 }
 
 function cancelSmsImport(){
   pendingSmsTxs=[];
   document.getElementById('smsList').style.display='none';
   document.getElementById('smsPermStatus').style.display='block';
-  document.getElementById('smsPermStatus').innerHTML=`
-    <div style="font-size:13px;color:var(--text3);margin-bottom:12px;">SMS reading requires device permission.</div>
-    <button onclick="requestSmsPermission()" style="padding:12px 24px;background:var(--accent);border:none;border-radius:12px;font-size:13px;font-weight:600;color:var(--bg);cursor:pointer;">Grant Permission & Scan</button>`;
+  document.getElementById('smsPermStatus').innerHTML='<textarea id="smsPasteArea" placeholder="Paste SMS messages here..." style="width:100%;height:160px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--text);resize:none;outline:none;line-height:1.5;box-sizing:border-box;"></textarea><button onclick="parseSmsText()" style="width:100%;padding:13px;background:var(--accent);border:none;border-radius:12px;font-size:13px;font-weight:600;color:var(--bg);cursor:pointer;margin-top:10px;">Parse Messages</button>';
 }
 
 async function confirmSmsImport(){
   const btn=document.getElementById('smsConfirmBtn');
   btn.textContent='Adding...';btn.disabled=true;
-  const selected=pendingSmsTxs.filter((_,i)=>document.getElementById('imp-chk-sms-'+i)?.checked);
+  const selected=pendingSmsTxs.filter(function(_,i){return document.getElementById('imp-chk-sms-'+i)?.checked;});
   let added=0;
   for(const t of selected){
-    const tx={
-      type:t.type,amt:parseFloat(t.amt),desc:t.desc,
-      category:t.category||'Other',detail:'Imported from SMS',
-      originalAmt:null,originalCurrency:null,walletId:null,
-      date:t.date||new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),
-      createdAt:Date.now()-added
-    };
+    const tx={type:t.type,amt:parseFloat(t.amt),desc:t.desc,category:t.category||'Other',
+      detail:'Imported from SMS',originalAmt:null,originalCurrency:null,walletId:null,
+      date:t.date||new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),createdAt:Date.now()-added};
     try{
       if(currentUser){const ref=await db.collection('users').doc(currentUser.uid).collection('transactions').add(tx);tx.firestoreId=ref.id;}
       txs.unshift(tx);added++;
     }catch(e){console.error(e);}
   }
-  closeOverlay('overlay-import');
-  updateUI();renderWallets();
+  closeOverlay('overlay-import');updateUI();renderWallets();
   showToast(added+' transactions imported ✓');
   cancelSmsImport();
   btn.textContent='Add Selected to Mizan';btn.disabled=false;
 }
 
+function processSmsMessages(messages){
+  const text=messages.map(function(m){return m.body||m;}).join('\n');
+  document.getElementById('smsPasteArea').value=text;
+  parseSmsText();
+}
+
+// ══════════════════════════════════════
 // TOAST
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
+// ══════════════════════════════════════
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer=setTimeout(()=>t.classList.remove('show'),2800);
+}
 </script>
 </body>
 </html>
