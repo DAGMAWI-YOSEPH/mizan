@@ -781,6 +781,15 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
 
     <!-- PDF TAB -->
     <div id="imp-pdf">
+      <!-- Wallet picker -->
+      <div id="pdfWalletPicker" style="margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Which account is this statement from?</div>
+        <select id="pdfWalletSelect" style="width:100%;padding:11px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text);outline:none;">
+          <option value="">— Select wallet (optional) —</option>
+        </select>
+        <div id="pdfBankDetected" style="display:none;font-size:11px;color:var(--accent);margin-top:5px;padding-left:2px;"></div>
+      </div>
+      <!-- Upload zone -->
       <div style="background:var(--bg2);border:1.5px dashed var(--border);border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;margin-bottom:14px;" onclick="document.getElementById('pdfFileInput').click()">
         <div style="font-size:32px;margin-bottom:8px;color:var(--text3);"><svg class="ico ico-xl" style="width:36px;height:36px;"><use href="#ic-photo"/></svg></div>
         <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Upload Bank Statement</div>
@@ -2289,6 +2298,10 @@ function checkRateBannerOnLoad(){
 let pendingPdfTxs=[], pendingSmsTxs=[];
 
 function openImport(){
+  populatePdfWalletSelect();
+  // Reset bank detection badge
+  const badge=document.getElementById('pdfBankDetected');
+  if(badge){badge.style.display='none';badge.textContent='';}
   switchImportTab('pdf');
   cancelPdfImport();
   document.getElementById('smsPermStatus').style.display='block';
@@ -2304,12 +2317,92 @@ function switchImportTab(tab){
 }
 
 // ── PDF IMPORT ──────────────────────────────
+
+// Bank fingerprints — keywords found in statement headers/footers
+const BANK_FINGERPRINTS=[
+  {id:'telebirr', name:'TeleBirr',    keywords:['telebirr','tele birr','ethio telecom','et-cash']},
+  {id:'cbe',      name:'CBE',         keywords:['commercial bank of ethiopia','cbe','cbebirr']},
+  {id:'awash',    name:'Awash Bank',  keywords:['awash bank','awash international']},
+  {id:'dashen',   name:'Dashen Bank', keywords:['dashen bank']},
+  {id:'abyssinia',name:'Bank of Abyssinia', keywords:['bank of abyssinia','boa']},
+  {id:'zemen',    name:'Zemen Bank',  keywords:['zemen bank']},
+  {id:'wegagen',  name:'Wegagen Bank',keywords:['wegagen bank']},
+  {id:'oromia',   name:'Oromia Bank', keywords:['oromia cooperative','ocssco']},
+  {id:'hellocash',name:'HelloCash',   keywords:['hellocash','hello cash']},
+  {id:'amhara',   name:'Amhara Bank', keywords:['amhara bank']},
+];
+
+function detectBankFromText(text){
+  const lower=text.toLowerCase().substring(0,2000); // check top of doc only
+  for(const b of BANK_FINGERPRINTS){
+    if(b.keywords.some(function(k){return lower.includes(k);}))return b;
+  }
+  return null;
+}
+
+function populatePdfWalletSelect(){
+  const sel=document.getElementById('pdfWalletSelect');
+  if(!sel)return;
+  sel.innerHTML='<option value="">— Select wallet (optional) —</option>';
+  wallets.forEach(function(w){
+    sel.innerHTML+='<option value="'+w.id+'">'+w.name+(w.provider?' ('+w.provider+')':'')+'</option>';
+  });
+}
+
+function renderPageToCanvas(page, scale){
+  return new Promise(function(resolve){
+    const viewport=page.getViewport({scale:scale});
+    const canvas=document.createElement('canvas');
+    canvas.width=viewport.width;
+    canvas.height=viewport.height;
+    const ctx=canvas.getContext('2d');
+    // White background (important for OCR on transparent PNGs)
+    ctx.fillStyle='#ffffff';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    page.render({canvasContext:ctx,viewport:viewport}).promise.then(function(){
+      resolve(canvas);
+    });
+  });
+}
+
+async function ocrCanvas(canvas, pageNum, maxPages, statusEl){
+  // Sharpen: increase contrast before passing to Tesseract
+  const ctx=canvas.getContext('2d');
+  const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const d=img.data;
+  // High-contrast filter — push pixels toward black or white
+  for(let i=0;i<d.length;i+=4){
+    const avg=(d[i]+d[i+1]+d[i+2])/3;
+    const val=avg<160?Math.max(0,avg-40):Math.min(255,avg+40);
+    d[i]=d[i+1]=d[i+2]=val;
+  }
+  ctx.putImageData(img,0,0);
+
+  const dataUrl=canvas.toDataURL('image/png');
+  const result=await Tesseract.recognize(dataUrl,'eng',{
+    tessedit_pageseg_mode:'6',   // assume uniform block of text
+    tessedit_char_whitelist:"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,/:- +()",
+    logger:function(m){
+      if(m.status==='recognizing text'){
+        const pct=Math.round((m.progress||0)*100);
+        statusEl.innerHTML=statusHtml('OCR page '+pageNum+' of '+maxPages+' — '+pct+'%');
+      }
+    }
+  });
+  return result.data.text;
+}
+
+function statusHtml(msg,sub){
+  return '<div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;line-height:1.6;">'
+    +msg+(sub?'<br/><span style="font-size:11px;opacity:.6;">'+sub+'</span>':'')+'</div>';
+}
+
 async function handlePdfImport(e){
   const file=e.target.files[0];
   if(!file)return;
   const statusEl=document.getElementById('pdfStatus');
   statusEl.style.display='block';
-  statusEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px;">Reading PDF...</div>';
+  statusEl.innerHTML=statusHtml('Reading PDF...');
   document.getElementById('pdfPreview').style.display='none';
   try{
     const arrayBuf=await file.arrayBuffer();
@@ -2321,50 +2414,60 @@ async function handlePdfImport(e){
     let fullText='';
     let isImageBased=false;
 
-    // First pass: try text extraction
+    // ── Pass 1: text extraction
     for(let p=1;p<=maxPages;p++){
       const page=await pdf.getPage(p);
       const tc=await page.getTextContent();
       fullText+=tc.items.map(function(i){return i.str;}).join(' ')+'\n';
     }
 
-    // If little/no text extracted, fall back to OCR
+    // ── Detect bank from text (even partial)
+    const detectedBank=detectBankFromText(fullText);
+    if(detectedBank){
+      const badge=document.getElementById('pdfBankDetected');
+      badge.style.display='block';
+      badge.textContent='✓ Detected: '+detectedBank.name+' statement';
+      // Auto-select matching wallet if name matches
+      const sel=document.getElementById('pdfWalletSelect');
+      if(sel && !sel.value){
+        const match=wallets.find(function(w){
+          return (w.name+' '+(w.provider||'')).toLowerCase().includes(detectedBank.id)
+              || (w.provider||'').toLowerCase().includes(detectedBank.name.toLowerCase().split(' ')[0]);
+        });
+        if(match) sel.value=match.id;
+      }
+    }
+
+    // ── Pass 2: OCR if image-based
     const textDensity=fullText.replace(/\s/g,'').length;
-    if(textDensity < 50){
+    if(textDensity < 80){
       isImageBased=true;
       fullText='';
-      statusEl.innerHTML='<div style="text-align:center;padding:12px;color:var(--text3);font-size:13px;">Image-based PDF detected — running OCR...<br/><span style="font-size:11px;opacity:.6;">This may take 10–30 seconds</span></div>';
+      statusEl.innerHTML=statusHtml('Image-based PDF — running OCR','This may take 20–40s per page');
 
       for(let p=1;p<=maxPages;p++){
-        statusEl.innerHTML='<div style="text-align:center;padding:12px;color:var(--text3);font-size:13px;">OCR page '+p+' of '+maxPages+'...</div>';
+        statusEl.innerHTML=statusHtml('Rendering page '+p+'...');
         const page=await pdf.getPage(p);
-        // Render page to canvas
-        const viewport=page.getViewport({scale:2.0}); // 2x scale for better OCR
-        const canvas=document.createElement('canvas');
-        canvas.width=viewport.width;
-        canvas.height=viewport.height;
-        const ctx=canvas.getContext('2d');
-        await page.render({canvasContext:ctx,viewport:viewport}).promise;
-        // OCR the canvas
-        const dataUrl=canvas.toDataURL('image/png');
-        const result=await Tesseract.recognize(dataUrl,'eng',{
-          logger:function(m){
-            if(m.status==='recognizing text'){
-              const pct=Math.round((m.progress||0)*100);
-              statusEl.innerHTML='<div style="text-align:center;padding:12px;color:var(--text3);font-size:13px;">OCR page '+p+' of '+maxPages+' — '+pct+'%</div>';
-            }
-          }
-        });
-        fullText+=result.data.text+'\n';
+
+        // Render at 4× for sharp number recognition
+        const canvas=await renderPageToCanvas(page, 4.0);
+        statusEl.innerHTML=statusHtml('OCR page '+p+' of '+maxPages,'Reading text...');
+        const pageText=await ocrCanvas(canvas, p, maxPages, statusEl);
+        fullText+=pageText+'\n';
       }
     }
 
     if(!fullText.trim())throw new Error('Could not read any text from this PDF.');
     const userName=userProfile?userProfile.name:'';
-    const parsed=parseStatementText(fullText,userName);
+    const parsed=parseStatementText(fullText, userName);
     if(!parsed.length)throw new Error(isImageBased
-      ?'OCR completed but no transactions found. The image quality may be too low.'
+      ?'OCR completed but no transactions recognised. Try a cleaner scan.'
       :'No transactions found. Make sure this is a bank statement PDF.');
+
+    // Attach detected wallet to all parsed txs
+    const selWallet=document.getElementById('pdfWalletSelect')?.value||null;
+    if(selWallet) parsed.forEach(function(t){t.walletId=selWallet;});
+
     pendingPdfTxs=parsed;
     statusEl.style.display='none';
     renderImportPreview(parsed,'pdf');
