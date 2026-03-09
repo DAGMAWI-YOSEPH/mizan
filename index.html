@@ -917,6 +917,7 @@ TeleBirr: Received ETB 5,000.00 from +251911234567 on 08/03/2026" style="width:1
 <div class="toast" id="toast"></div>
 
 <!-- FIREBASE -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -2311,7 +2312,8 @@ async function handlePdfImport(e){
   document.getElementById('pdfPreview').style.display='none';
   try{
     const arrayBuf=await file.arrayBuffer();
-    const pdfjsLib=window['pdfjs-dist/build/pdf'];
+    const pdfjsLib=window.pdfjsLib;
+    if(!pdfjsLib)throw new Error('PDF library not loaded. Try refreshing the app.');
     pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await pdfjsLib.getDocument({data:arrayBuf}).promise;
     let fullText='';
