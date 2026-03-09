@@ -475,59 +475,18 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
   </div>
 
   <!-- TAB CONTENTS -->
-  <div class="tab-content active" id="tab-add">
-    <div class="type-row">
-      <button class="type-pill income on" id="pill-income" onclick="setTxType('income')"><svg class="ico ico-sm"><use href="#ic-income"/></svg> Income</button>
-      <button class="type-pill expense" id="pill-expense" onclick="setTxType('expense')"><svg class="ico ico-sm"><use href="#ic-expense"/></svg> Expense</button>
-    </div>
-    <div class="amount-row">
-      <span class="amount-sym" id="amtSymLabel">ETB</span>
-      <input class="amount-in" id="amtIn" type="number" inputmode="decimal" placeholder="0.00"/>
-    </div>
-    <div class="form-field"><input type="text" id="descIn" placeholder="Description (optional)" maxlength="60"/></div>
-    <!-- Wallet selector -->
-    <div class="form-field source-select-wrap">
-      <select id="walletSelect"><option value="">— Select wallet —</option></select>
-    </div>
-    <!-- Currency selector -->
-    <div class="currency-row">
-      <div class="form-field source-select-wrap" style="flex:1;margin-bottom:0;">
-        <select id="txCurrencySelect" onchange="onTxCurrencyChange()"></select>
+  <div class="tab-content active" id="tab-home">
+    <div style="padding:0 20px;">
+      <div class="section-header" style="margin-top:4px;">
+        <div class="section-title">Recent</div>
+        <button class="text-btn" style="color:var(--accent);" onclick="switchTab('history')">See all →</button>
       </div>
-      <div class="rate-badge" id="rateDisplay">—</div>
+      <div id="recentTxList"></div>
     </div>
-    <div id="income-fields">
-      <div class="form-field source-select-wrap">
-        <select id="sourceSelect" onchange="onSourceChange()"><option value="">— Select income source —</option></select>
-      </div>
-      <div id="income-detail-hint" style="display:none;">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:10px;text-align:center;cursor:pointer;" onclick="openIncomeDetailPopup()">＋ Add note / pay period (optional)</div>
-      </div>
-      
-    </div>
-    <div id="expense-fields" style="display:none;">
-      <div class="form-field source-select-wrap">
-        <select id="expCatSelect" onchange="onExpCatChange()">
-          <option value="">— Select category —</option>
-          <option value="food">Food & Dining</option>
-          <option value="transport">Transport</option>
-          <option value="housing">Housing & Rent</option>
-          <option value="health">Health</option>
-          <option value="subscriptions">Subscriptions</option>
-          <option value="shopping">Shopping</option>
-          <option value="education">Education</option>
-          <option value="travel">Travel</option>
-          <option value="utilities">Utilities</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div id="sub-selected-display" style="display:none;font-size:12px;color:var(--text2);margin-bottom:10px;padding:10px 12px;background:var(--bg2);border-radius:10px;border:1px solid var(--border);cursor:pointer;" onclick="openSubPopup()"></div>
-    </div>
-    <button class="submit-btn" id="submitBtn" onclick="addTx()">ADD TRANSACTION</button>
     <div style="height:20px;"></div>
   </div>
 
-  <div class="tab-content" id="tab-history">
+    <div class="tab-content" id="tab-history">
     <!-- Wallet filter (synced with wallet cards scroll) -->
     <div class="cat-filter" id="historyWalletFilter" style="padding:0 20px;margin-bottom:10px;"></div>
     <!-- Type filter -->
@@ -628,6 +587,10 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
     </div>
     <div class="settings-row" onclick="openWalletManager()">
       <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-wallet"/></svg></div><div><div class="settings-row-label">Manage Wallets</div><div class="settings-row-sub">Add or remove wallets</div></div></div>
+      <div class="settings-row-arrow"><svg class="ico ico-sm"><use href="#ic-chevron-r"/></svg></div>
+    </div>
+    <div class="settings-row" onclick="closeSettings();openRatesManager()">
+      <div class="settings-row-left"><div class="settings-row-icon"><svg class="ico ico-md"><use href="#ic-globe"/></svg></div><div><div class="settings-row-label">Exchange Rates</div><div class="settings-row-sub" id="ratesSettingsSubtitle">Black market rates · tap to update</div></div></div>
       <div class="settings-row-arrow"><svg class="ico ico-sm"><use href="#ic-chevron-r"/></svg></div>
     </div>
     <div class="settings-row" onclick="closeSettings();openImport()">
@@ -856,6 +819,47 @@ body.light .nav-btn.active{background:rgba(122,106,88,.12);color:var(--accent);}
   </div>
 </div>
 
+<!-- RATES MANAGER OVERLAY -->
+<div class="overlay" id="overlay-rates" onclick="closeOverlay('overlay-rates',event)">
+  <div class="popup" style="max-height:88vh;">
+    <div class="popup-handle"></div>
+    <button class="popup-close" onclick="closeOverlay('overlay-rates')"><svg class="ico ico-sm"><use href="#ic-close"/></svg></button>
+    <div class="popup-title">Black Market Rates</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.5;">Enter this week's black market rates manually. Mizan will remind you every Monday.</div>
+
+    <!-- Rate source indicator -->
+    <div id="rateSourceBadge" style="display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--text3);"></div>
+
+    <!-- Last updated -->
+    <div id="ratesLastUpdated" style="font-size:11px;color:var(--text3);margin-bottom:14px;text-align:center;"></div>
+
+    <!-- Rate inputs -->
+    <div id="rateInputList" style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;"></div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button onclick="resetToAutoRates()" style="flex:1;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--text2);cursor:pointer;">↺ Auto-fetch</button>
+      <button onclick="saveManualRates()" style="flex:2;padding:12px;background:var(--accent);border:none;border-radius:10px;font-size:13px;font-weight:600;color:var(--bg);cursor:pointer;">Save Rates</button>
+    </div>
+
+    <!-- Telegram reminder toggle -->
+    <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;">Weekly Reminder</div>
+      <div class="toggle-row" onclick="toggleRateReminder()">
+        <div>
+          <div style="font-size:13px;font-weight:500;">Remind me every Monday</div>
+          <div style="font-size:11px;color:var(--text3);" id="reminderSubtitle">Get a Telegram message to update rates</div>
+        </div>
+        <div class="toggle-switch" id="reminderToggle"></div>
+      </div>
+      <div id="telegramSetupWrap" style="display:none;margin-top:12px;">
+        <input id="telegramChatId" placeholder="Your Telegram Chat ID (from @userinfobot)" type="text" style="width:100%;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text);outline:none;box-sizing:border-box;"/>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5;">Message <b>@userinfobot</b> on Telegram to get your Chat ID. Then paste it above.</div>
+        <button onclick="saveTelegramChatId()" style="width:100%;margin-top:10px;padding:11px;background:var(--bg2);border:1.5px solid var(--accent);border-radius:10px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;">Save Chat ID</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- WALLET POPUP -->
 <div class="overlay" id="overlay-wallet" onclick="closeOverlay('overlay-wallet',event)">
   <div class="popup">
@@ -1058,7 +1062,7 @@ auth.onAuthStateChanged(async fbUser=>{
     updateAppHeader();
     renderWallets();
     updateUI();
-    showScreen('app');
+    showScreen('app');switchTab('home');
     fetchExchangeRates();
   } else {
     currentUser=null;
@@ -1384,7 +1388,7 @@ async function deleteTemplate(i){
 }
 async function finishOnboard(){
   renderTxCurrencySelect();renderWalletSelect();renderSourceSelect();renderSubGrid(SUBS);updateAppHeader();renderWallets();updateUI();
-  showScreen('app');
+  showScreen('app');switchTab('home');checkRateBannerOnLoad();
 }
 
 // ══════════════════════════════════════
@@ -1955,6 +1959,215 @@ function renderNewsCard(a){
 // ══════════════════════════════════════
 function openOverlay(id){document.getElementById(id).classList.add('open');}
 function closeOverlay(id,e){if(e&&e.target!==document.getElementById(id))return;document.getElementById(id).classList.remove('open');}
+
+// ══════════════════════════════════════
+// RATES MANAGER
+// ══════════════════════════════════════
+let manualRatesEnabled=false, rateReminderEnabled=false, telegramChatId='';
+
+const RATE_CURRENCIES=[
+  {code:'USD',flag:'🇺🇸',name:'US Dollar'},
+  {code:'EUR',flag:'🇪🇺',name:'Euro'},
+  {code:'GBP',flag:'🇬🇧',name:'British Pound'},
+  {code:'SAR',flag:'🇸🇦',name:'Saudi Riyal'},
+  {code:'AED',flag:'🇦🇪',name:'UAE Dirham'},
+  {code:'CHF',flag:'🇨🇭',name:'Swiss Franc'},
+  {code:'CAD',flag:'🇨🇦',name:'Canadian Dollar'},
+  {code:'AUD',flag:'🇦🇺',name:'Australian Dollar'},
+  {code:'CNY',flag:'🇨🇳',name:'Chinese Yuan'},
+  {code:'KWD',flag:'🇰🇼',name:'Kuwaiti Dinar'},
+  {code:'QAR',flag:'🇶🇦',name:'Qatari Riyal'},
+  {code:'OMR',flag:'🇴🇲',name:'Omani Rial'},
+];
+
+async function openRatesManager(){
+  // Load saved prefs from Firestore
+  if(currentUser){
+    try{
+      const doc=await db.collection('users').doc(currentUser.uid).collection('prefs').doc('rates').get();
+      if(doc.exists){
+        const d=doc.data();
+        if(d.manualRates)Object.assign(exchangeRates,d.manualRates);
+        if(d.manualEnabled)manualRatesEnabled=d.manualEnabled;
+        if(d.reminderEnabled)rateReminderEnabled=d.reminderEnabled;
+        if(d.telegramChatId)telegramChatId=d.telegramChatId;
+      }
+    }catch(e){}
+  }
+  renderRatesOverlay();
+  openOverlay('overlay-rates');
+  checkRateReminder();
+}
+
+function renderRatesOverlay(){
+  // Source badge
+  const badge=document.getElementById('rateSourceBadge');
+  if(manualRatesEnabled){
+    badge.innerHTML='<svg class="ico ico-sm" style="color:var(--income)"><use href="#ic-check"/></svg> <span style="color:var(--income);font-weight:600;">Using your manual rates</span>';
+  } else if(rateSource==='EBM'){
+    badge.innerHTML='<svg class="ico ico-sm" style="color:var(--accent)"><use href="#ic-globe"/></svg> <span>Auto-fetched from EthioBlackMarket.com</span>';
+  } else if(rateSource==='fawaz'){
+    badge.innerHTML='<svg class="ico ico-sm" style="color:var(--text3)"><use href="#ic-globe"/></svg> <span style="color:var(--text3);">Using official rates (black market unavailable)</span>';
+  } else {
+    badge.innerHTML='<svg class="ico ico-sm" style="color:var(--text3)"><use href="#ic-globe"/></svg> <span style="color:var(--text3);">No rates loaded yet</span>';
+  }
+  // Last updated
+  const lu=document.getElementById('ratesLastUpdated');
+  const saved=localStorage.getItem('mizanRatesDate');
+  lu.textContent=saved?'Last updated: '+saved:'No manual rates saved yet';
+  // Rate inputs
+  const list=document.getElementById('rateInputList');
+  list.innerHTML=RATE_CURRENCIES.map(c=>`
+    <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;">
+      <div style="font-size:18px;flex-shrink:0;">${c.flag}</div>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:600;">${c.code}</div>
+        <div style="font-size:10px;color:var(--text3);">${c.name}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:11px;color:var(--text3);">1 ${c.code} =</span>
+        <input id="rate-input-${c.code}" type="number" inputmode="decimal" value="${exchangeRates[c.code]||''}" placeholder="0.00" style="width:88px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);text-align:right;outline:none;"/>
+        <span style="font-size:11px;color:var(--text3);">ETB</span>
+      </div>
+    </div>`).join('');
+  // Reminder toggle
+  document.getElementById('reminderToggle').classList.toggle('on',rateReminderEnabled);
+  document.getElementById('telegramSetupWrap').style.display=rateReminderEnabled?'block':'none';
+  if(telegramChatId)document.getElementById('telegramChatId').value=telegramChatId;
+  const sub=document.getElementById('reminderSubtitle');
+  sub.textContent=rateReminderEnabled&&telegramChatId?'Reminder active — every Monday':'Get a Telegram message to update rates';
+}
+
+async function saveManualRates(){
+  const rates={};
+  let filled=0;
+  RATE_CURRENCIES.forEach(c=>{
+    const v=parseFloat(document.getElementById('rate-input-'+c.code)?.value);
+    if(v&&v>0){rates[c.code]=v;filled++;}
+  });
+  if(!filled){showToast('Enter at least one rate');return;}
+  Object.assign(exchangeRates,rates);
+  manualRatesEnabled=true;
+  const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  localStorage.setItem('mizanRatesDate',today);
+  // Save to Firestore
+  if(currentUser){
+    try{
+      await db.collection('users').doc(currentUser.uid).collection('prefs').doc('rates').set({
+        manualRates:rates,manualEnabled:true,
+        reminderEnabled:rateReminderEnabled,
+        telegramChatId:telegramChatId||'',
+        updatedAt:Date.now()
+      },{merge:true});
+    }catch(e){}
+  }
+  renderRatesOverlay();
+  updateRateDisplay(document.getElementById('txCurrencySelect')?.value||userCurrency);
+  document.getElementById('ratesSettingsSubtitle').textContent='Updated '+today;
+  closeOverlay('overlay-rates');
+  showToast('Rates saved ✓ '+filled+' currencies updated');
+}
+
+async function resetToAutoRates(){
+  manualRatesEnabled=false;
+  if(currentUser){
+    try{await db.collection('users').doc(currentUser.uid).collection('prefs').doc('rates').set({manualEnabled:false},{merge:true});}catch(e){}
+  }
+  await fetchExchangeRates();
+  renderRatesOverlay();
+  showToast('Switched back to auto-fetched rates');
+}
+
+function toggleRateReminder(){
+  rateReminderEnabled=!rateReminderEnabled;
+  document.getElementById('reminderToggle').classList.toggle('on',rateReminderEnabled);
+  document.getElementById('telegramSetupWrap').style.display=rateReminderEnabled?'block':'none';
+}
+
+async function saveTelegramChatId(){
+  const val=document.getElementById('telegramChatId').value.trim();
+  if(!val){showToast('Enter your Chat ID first');return;}
+  telegramChatId=val;
+  if(currentUser){
+    try{await db.collection('users').doc(currentUser.uid).collection('prefs').doc('rates').set({telegramChatId:val,reminderEnabled:true},{merge:true});}catch(e){}
+  }
+  // Send a test message via Telegram bot
+  await sendTelegramRateReminder(true);
+  document.getElementById('reminderSubtitle').textContent='Reminder active — every Monday';
+  showToast('Chat ID saved! Test message sent ✓');
+}
+
+async function sendTelegramRateReminder(isTest=false){
+  if(!telegramChatId)return;
+  const BOT_TOKEN='7854399410:AAF6Fj0a-xbxPGxCU5bWXA3WZqKzG0XWTLM';
+  const testMsg='\u{1F44B} Mizan - Test reminder! Every Monday I will remind you to update your black market exchange rates. Open the app > Settings > Exchange Rates to update.';
+  const weekMsg='\u{1F4CA} Mizan - Time to update your rates! It is Monday - the black market rates may have changed. Open Mizan > Settings > Exchange Rates to enter this week rates.';
+  const msg=isTest?testMsg:weekMsg;
+  try{
+    await fetch('https://api.telegram.org/bot'+BOT_TOKEN+'/sendMessage',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:telegramChatId,text:msg})
+    });
+  }catch(e){console.warn('Telegram send failed',e);}
+}
+
+function checkRateReminder(){
+  if(!rateReminderEnabled||!telegramChatId)return;
+  const now=new Date();
+  const lastSent=localStorage.getItem('mizanReminderSent');
+  const thisMonday=getMondayStr(now);
+  if(lastSent!==thisMonday&&now.getDay()===1){
+    // It's Monday and we haven't sent this week
+    sendTelegramRateReminder(false);
+    localStorage.setItem('mizanReminderSent',thisMonday);
+  }
+  // In-app banner: show if rates not updated this week
+  const ratesDate=localStorage.getItem('mizanRatesDate');
+  const lastUpdate=ratesDate?new Date(ratesDate):null;
+  const daysSince=lastUpdate?Math.floor((now-lastUpdate)/(1000*60*60*24)):999;
+  if(daysSince>=7||!ratesDate){
+    showRatesBanner();
+  }
+}
+
+function getMondayStr(date){
+  const d=new Date(date);
+  const day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1);
+  d.setDate(diff);return d.toISOString().split('T')[0];
+}
+
+function showRatesBanner(){
+  if(document.getElementById('ratesBanner'))return;
+  const banner=document.createElement('div');
+  banner.id='ratesBanner';
+  banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:200;background:var(--accent);color:var(--bg);padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;font-weight:500;';
+  banner.innerHTML='<svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span style="flex:1;">Time to update your black market rates</span><span style="font-size:11px;opacity:.7;" onclick="dismissRatesBanner(event)">Dismiss</span>';
+  banner.onclick=()=>{dismissRatesBanner();openRatesManager();};
+  document.body.appendChild(banner);
+  // Push app down
+  const app=document.getElementById('screen-app');
+  if(app)app.style.paddingTop='44px';
+}
+
+function dismissRatesBanner(e){
+  if(e)e.stopPropagation();
+  const b=document.getElementById('ratesBanner');
+  if(b)b.remove();
+  const app=document.getElementById('screen-app');
+  if(app)app.style.paddingTop='';
+  localStorage.setItem('mizanBannerDismissed',new Date().toISOString().split('T')[0]);
+}
+
+// Check banner on app load (after login)
+function checkRateBannerOnLoad(){
+  const dismissed=localStorage.getItem('mizanBannerDismissed');
+  const today=new Date().toISOString().split('T')[0];
+  if(dismissed===today)return; // dismissed today, don't show again
+  const ratesDate=localStorage.getItem('mizanRatesDate');
+  const daysSince=ratesDate?Math.floor((new Date()-new Date(ratesDate))/(1000*60*60*24)):999;
+  if(daysSince>=7)showRatesBanner();
+}
 
 // ══════════════════════════════════════
 // IMPORT (PDF + SMS)
